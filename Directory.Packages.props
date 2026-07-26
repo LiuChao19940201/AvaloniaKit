@@ -36,6 +36,8 @@
 
     <!-- ═══ Desktop 专用（显式覆盖 Avalonia.Desktop 传递依赖的漏洞版本） ═══ -->
     <PackageVersion Include="Tmds.DBus.Protocol"             Version="0.21.3" />
+    <!-- Desktop 音频播放（Windows：MediaFoundation 流式 + WaveOut 输出） -->
+    <PackageVersion Include="NAudio"                         Version="2.2.1" />
 
     <!-- ═══ Android 专用 ═══ -->
     <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0.2" />

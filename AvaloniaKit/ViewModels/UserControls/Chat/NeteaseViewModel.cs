@@ -273,7 +273,7 @@ public partial class NeteaseViewModel : ObservableObject,
     {
         try
         {
-            string url = $"https://music.163.com/api/personalized/newsong?limit={limit}";
+            string url = NeteaseApi.PersonalizedNewSong(limit);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
             string raw = await _http.GetStringAsync(url, cts.Token);
 
@@ -336,7 +336,7 @@ public partial class NeteaseViewModel : ObservableObject,
         var ids = new List<long>();
         try
         {
-            string url = $"https://music.163.com/api/v6/playlist/detail?id={listId}&n=0";
+            string url = NeteaseApi.PlaylistDetail(listId);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
             string raw = await _http.GetStringAsync(url, cts.Token);
 
@@ -362,15 +362,7 @@ public partial class NeteaseViewModel : ObservableObject,
     {
         try
         {
-            var sb = new System.Text.StringBuilder("[");
-            for (int i = 0; i < ids.Count; i++)
-            {
-                if (i > 0) sb.Append(',');
-                sb.Append("{\"id\":").Append(ids[i]).Append('}');
-            }
-            sb.Append(']');
-
-            string url = $"https://music.163.com/api/v3/song/detail?c={Uri.EscapeDataString(sb.ToString())}";
+            string url = NeteaseApi.SongDetail(ids);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
             string raw = await _http.GetStringAsync(url, cts.Token);
 
@@ -393,7 +385,7 @@ public partial class NeteaseViewModel : ObservableObject,
     private async Task LoadPlaylistLegacyAsync(
         ObservableCollection<NeteaseSongItem> target, long listId, int limit)
     {
-        string url = $"https://music.163.com/api/playlist/detail?id={listId}";
+        string url = NeteaseApi.PlaylistDetailLegacy(listId);
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
         string raw = await _http.GetStringAsync(url, cts.Token);
 
@@ -456,7 +448,7 @@ public partial class NeteaseViewModel : ObservableObject,
     {
         try
         {
-            string url = $"https://music.163.com/api/cloudsearch/pc?s={Uri.EscapeDataString(keyword)}&type=1&limit=30&offset=0";
+            string url = NeteaseApi.CloudSearch(keyword, 30);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             string raw = await _http.GetStringAsync(url, cts.Token);
             using var doc = JsonDocument.Parse(raw);
@@ -473,7 +465,11 @@ public partial class NeteaseViewModel : ObservableObject,
                 if (s.TryGetProperty("privilege", out var priv) &&
                     priv.ValueKind == JsonValueKind.Object)
                 {
-                    if (priv.TryGetLong("st") < 0 || priv.TryGetLong("pl") <= 0)
+                    if (priv.TryGetLong("st") < 0)
+                        continue;
+                    // pl 字段存在才判断（镜像接口可能不带 pl，避免误杀全部结果）
+                    if (priv.TryGetProperty("pl", out var pl) &&
+                        pl.ValueKind == JsonValueKind.Number && pl.GetInt64() <= 0)
                         continue;
                 }
 
@@ -488,7 +484,7 @@ public partial class NeteaseViewModel : ObservableObject,
     // ── 老 web 搜索兜底：只取 id，经 song/detail 补全封面/时长 ──
     private async Task SearchLegacyAsync(string keyword)
     {
-        string url = $"https://music.163.com/api/search/get/web?s={Uri.EscapeDataString(keyword)}&type=1&limit=20&offset=0";
+        string url = NeteaseApi.SearchLegacy(keyword, 20);
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         string raw = await _http.GetStringAsync(url, cts.Token);
         using var doc = JsonDocument.Parse(raw);
@@ -719,6 +715,7 @@ public partial class NeteaseSongItem : ObservableObject
 
         try
         {
+            // 封面 CDN(music.126.net) 自带 CORS:*，三端均可直连
             byte[] bytes = await _http.GetByteArrayAsync(thumbUrl).ConfigureAwait(false);
             using var ms = new MemoryStream(bytes);
             var bmp = new Bitmap(ms);

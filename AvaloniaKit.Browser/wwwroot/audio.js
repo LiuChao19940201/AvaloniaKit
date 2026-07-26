@@ -18,7 +18,8 @@ let _onCanPlay  = null;   // ★ 新增
 function ensureAudio() {
     if (_audio) return;
     _audio = new Audio();
-    _audio.crossOrigin = "anonymous";   // 尝试跨域（部分CDN支持）
+    // ★ 不设 crossOrigin：网易 CDN 不返回 CORS 头，设了 anonymous 会导致
+    //   浏览器拒绝加载音频（MediaError）；默认 no-cors 模式可正常播放并跟随 302
 
     // ★ 用 ontimeupdate 替代 setInterval，更高效
     _audio.ontimeupdate = () => {

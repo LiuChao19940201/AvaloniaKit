@@ -1,36 +1,62 @@
 using AvaloniaKit.Services;
+using NAudio.Wave;
 using System;
-using System.Runtime.InteropServices;
+using System.IO;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace AvaloniaKit.Desktop.Services;
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  DesktopAudioService
-//  使用 Windows Media Foundation（WMF）的 MCI / winmm 或
-//  直接调用 Windows.Media.Playback（仅 Windows）。
+//  DesktopAudioService — NAudio 实现（对齐 Android 端行为）
+//  · 播放：先带 UA/Referer 手动解析 302 链拿最终 CDN 地址，
+//    MediaFoundationReader 直连流式播放（秒开）；失败时回退到
+//    下载至临时文件后本地播放
+//  · 进度：System.Threading.Timer 每 500ms 推送 ProgressChanged
+//    （后台线程触发，VM 端统一 Dispatcher.UIThread.Post 回 UI 线程）
+//  · 时长/Seek：MediaFoundationReader 提供精确 TotalTime/CurrentTime
 //
-//  跨系统备选：使用 System.Media.SoundPlayer（只支持 WAV），
-//  因此这里改用更通用的 mciSendString（支持 MP3，Windows 内置）。
-//
-//  Linux / macOS Desktop 如需支持，可在此文件底部加
-//  #if / RuntimeInformation 分支，调用 afplay(macOS) 或 mpg123(Linux)。
+//  ★ 弃用旧 MCI(winmm) 方案的原因：status length/position 跨线程查询
+//    经常拿不到值 → DurationMs=0 → 进度条不动、歌词不滚动、Seek 全部失效
 // ══════════════════════════════════════════════════════════════════════════════
 public class DesktopAudioService : IAudioService, IDisposable
 {
-    // ── WinMM MCI P/Invoke ────────────────────────────────────────────────────
-    [DllImport("winmm.dll", CharSet = CharSet.Auto)]
-    private static extern int mciSendString(
-        string command, System.Text.StringBuilder? returnString,
-        int returnLength, IntPtr hwndCallback);
+    // 解析 302 / 下载音频用（关闭自动跳转，手动跟随并保留请求头）
+    private static readonly HttpClient _http = new(new HttpClientHandler
+    {
+        AllowAutoRedirect = false,
+    })
+    { Timeout = TimeSpan.FromSeconds(30) };
 
-    private const string ALIAS = "netease_audio";
+    static DesktopAudioService()
+    {
+        _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0");
+        _http.DefaultRequestHeaders.TryAddWithoutValidation(
+            "Referer", "https://music.163.com/");
+        try { NAudio.MediaFoundation.MediaFoundationApi.Startup(); } catch { }
+    }
 
     // ── 状态 ─────────────────────────────────────────────────────────────────
-    public bool   IsPlaying  { get; private set; }
-    public long   CurrentMs  { get; private set; }
-    public long   DurationMs { get; private set; }
+    private readonly object _lock = new();
+    private WaveOutEvent? _waveOut;
+    private WaveStream? _reader;
+    private Timer? _timer;
+    private string? _tmpFile;
+    private bool _manualStop;      // 区分手动 Stop 与自然播放结束
+
+    public bool IsPlaying { get; private set; }
+
+    public long CurrentMs
+    {
+        get { lock (_lock) return (long)(_reader?.CurrentTime.TotalMilliseconds ?? 0); }
+    }
+
+    public long DurationMs
+    {
+        get { lock (_lock) return (long)(_reader?.TotalTime.TotalMilliseconds ?? 0); }
+    }
 
     private double _volume = 1.0;
     public double Volume
@@ -39,9 +65,10 @@ public class DesktopAudioService : IAudioService, IDisposable
         set
         {
             _volume = Math.Clamp(value, 0, 1);
-            // MCI 音量 0~1000
-            int vol = (int)(_volume * 1000);
-            mciSendString($"setaudio {ALIAS} volume to {vol}", null, 0, IntPtr.Zero);
+            lock (_lock)
+            {
+                if (_waveOut != null) _waveOut.Volume = (float)_volume;
+            }
         }
     }
 
@@ -49,10 +76,6 @@ public class DesktopAudioService : IAudioService, IDisposable
     public event EventHandler<AudioProgressEventArgs>? ProgressChanged;
     public event EventHandler? PlaybackEnded;
     public event EventHandler<string>? PlaybackError;
-
-    // ── 内部 ─────────────────────────────────────────────────────────────────
-    private CancellationTokenSource? _cts;
-    private bool _opened = false;
 
     // ══════════════════════════════════════════════════════════════════════════
     //  PlayAsync
@@ -63,75 +86,42 @@ public class DesktopAudioService : IAudioService, IDisposable
 
         try
         {
-            string tmpFile = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
-                $"netease_{Guid.NewGuid():N}.mp3");
+            string finalUrl = await ResolveFinalUrlAsync(url);
 
-            StatusText("下载中…");
-
-            var handler = new System.Net.Http.HttpClientHandler
+            // ── 策略1：MediaFoundation 直连流式播放（秒开，与 Android 一致）──
+            WaveStream? reader = null;
+            try
             {
-                AllowAutoRedirect = false // ★ 关键：关闭自动跳转
-            };
+                reader = await Task.Run(() => (WaveStream)new MediaFoundationReader(finalUrl));
+            }
+            catch { /* 流式失败 → 回退下载 */ }
 
-            using var http = new System.Net.Http.HttpClient(handler);
-
-            http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-            http.DefaultRequestHeaders.TryAddWithoutValidation(
-                "Referer", "https://music.163.com/");
-
-            // ────────────────
-            // 第一次请求（拿 302）
-            // ────────────────
-            var resp = await http.SendAsync(
-                new System.Net.Http.HttpRequestMessage(
-                    System.Net.Http.HttpMethod.Get, url),
-                System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
-
-            string realUrl = url;
-
-            // ★ 关键：处理 302
-            if ((int)resp.StatusCode == 302 || resp.StatusCode == System.Net.HttpStatusCode.Found)
+            // ── 策略2：下载到临时文件后本地播放 ──────────────────────────────
+            string? tmpFile = null;
+            if (reader == null)
             {
-                realUrl = resp.Headers.Location?.ToString() ?? url;
+                tmpFile = Path.Combine(Path.GetTempPath(),
+                    $"netease_{Guid.NewGuid():N}.mp3");
+                byte[] bytes = await _http.GetByteArrayAsync(finalUrl);
+                await File.WriteAllBytesAsync(tmpFile, bytes);
+                reader = await Task.Run(() => (WaveStream)new MediaFoundationReader(tmpFile));
             }
 
-            // ────────────────
-            // 第二次请求（真正音频）
-            // ────────────────
-            var audioResp = await http.GetAsync(realUrl);
-            audioResp.EnsureSuccessStatusCode();
-
-            var bytes = await audioResp.Content.ReadAsByteArrayAsync();
-            await System.IO.File.WriteAllBytesAsync(tmpFile, bytes);
-
-            // ────────────────
-            // MCI 播放
-            // ────────────────
-            string openCmd = $"open \"{tmpFile}\" type mpegvideo alias {ALIAS}";
-            int ret = mciSendString(openCmd, null, 0, IntPtr.Zero);
-
-            if (ret != 0)
+            lock (_lock)
             {
-                PlaybackError?.Invoke(this, $"MCI open 失败: {ret}");
-                return;
+                _reader = reader;
+                _tmpFile = tmpFile;
+                _manualStop = false;
+
+                _waveOut = new WaveOutEvent();
+                _waveOut.Init(_reader);
+                _waveOut.Volume = (float)_volume;
+                _waveOut.PlaybackStopped += OnPlaybackStopped;
+                _waveOut.Play();
+                IsPlaying = true;
             }
 
-            _opened = true;
-
-            // 获取时长
-            var sb = new System.Text.StringBuilder(128);
-            mciSendString($"status {ALIAS} length", sb, 128, IntPtr.Zero);
-
-            if (long.TryParse(sb.ToString().Trim(), out long dur))
-                DurationMs = dur;
-
-            // 播放
-            mciSendString($"play {ALIAS}", null, 0, IntPtr.Zero);
-            IsPlaying = true;
-
-            StartPolling(tmpFile);
+            StartTimer();
         }
         catch (Exception ex)
         {
@@ -139,98 +129,137 @@ public class DesktopAudioService : IAudioService, IDisposable
         }
     }
 
+    // ── 手动跟随 302 链：网易 outer/url → music.126.net CDN ─────────────────
+    private static async Task<string> ResolveFinalUrlAsync(string url)
+    {
+        string current = url;
+        for (int i = 0; i < 5; i++)
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Head, current);
+            using var resp = await _http.SendAsync(
+                req, HttpCompletionOption.ResponseHeadersRead);
+
+            int code = (int)resp.StatusCode;
+            if (code is >= 300 and < 400 && resp.Headers.Location != null)
+            {
+                var loc = resp.Headers.Location;
+                current = loc.IsAbsoluteUri
+                    ? loc.ToString()
+                    : new Uri(new Uri(current), loc).ToString();
+                continue;
+            }
+            break;
+        }
+        return current;
+    }
+
+    // ── 播放结束（自然结束才通知，手动 Stop 不通知）─────────────────────────
+    private void OnPlaybackStopped(object? sender, StoppedEventArgs e)
+    {
+        bool manual;
+        lock (_lock) manual = _manualStop;
+        if (manual) return;
+
+        IsPlaying = false;
+        StopTimer();
+        if (e.Exception != null)
+            PlaybackError?.Invoke(this, e.Exception.Message);
+        else
+            PlaybackEnded?.Invoke(this, EventArgs.Empty);
+    }
+
     public void Pause()
     {
-        if (!_opened || !IsPlaying) return;
-        mciSendString($"pause {ALIAS}", null, 0, IntPtr.Zero);
-        IsPlaying = false;
-        _cts?.Cancel();
+        lock (_lock)
+        {
+            if (_waveOut == null || !IsPlaying) return;
+            _waveOut.Pause();
+            IsPlaying = false;
+        }
+        StopTimer();
     }
 
     public void Resume()
     {
-        if (!_opened || IsPlaying) return;
-        mciSendString($"resume {ALIAS}", null, 0, IntPtr.Zero);
-        IsPlaying = true;
-        StartPolling(null);
+        lock (_lock)
+        {
+            if (_waveOut == null || IsPlaying) return;
+            _waveOut.Play();
+            IsPlaying = true;
+        }
+        StartTimer();
     }
 
     public void Stop()
     {
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = null;
+        StopTimer();
 
-        if (_opened)
+        string? tmpFile;
+        lock (_lock)
         {
-            mciSendString($"stop {ALIAS}",  null, 0, IntPtr.Zero);
-            mciSendString($"close {ALIAS}", null, 0, IntPtr.Zero);
-            _opened = false;
+            _manualStop = true;
+            if (_waveOut != null)
+            {
+                _waveOut.PlaybackStopped -= OnPlaybackStopped;
+                try { _waveOut.Stop(); } catch { }
+                _waveOut.Dispose();
+                _waveOut = null;
+            }
+            _reader?.Dispose();
+            _reader = null;
+            tmpFile = _tmpFile;
+            _tmpFile = null;
+            IsPlaying = false;
         }
-        IsPlaying  = false;
-        CurrentMs  = 0;
-        DurationMs = 0;
+
+        if (tmpFile != null)
+        {
+            try { File.Delete(tmpFile); } catch { }
+        }
     }
 
     public void SeekTo(long ms)
     {
-        if (!_opened) return;
-        mciSendString($"seek {ALIAS} to {ms}", null, 0, IntPtr.Zero);
-        if (IsPlaying)
-            mciSendString($"play {ALIAS}", null, 0, IntPtr.Zero);
-        CurrentMs = ms;
+        long current = ms, duration;
+        lock (_lock)
+        {
+            if (_reader == null) return;
+            duration = (long)_reader.TotalTime.TotalMilliseconds;
+            current = Math.Clamp(ms, 0, Math.Max(0, duration));
+            try { _reader.CurrentTime = TimeSpan.FromMilliseconds(current); }
+            catch { return; }
+        }
         ProgressChanged?.Invoke(this, new AudioProgressEventArgs
         {
-            CurrentMs = CurrentMs, DurationMs = DurationMs
+            CurrentMs = current, DurationMs = duration,
         });
     }
 
-    // ── 进度轮询 ──────────────────────────────────────────────────────────────
-    private void StartPolling(string? tmpFile)
+    // ── 进度定时器（500ms，后台线程；VM 端负责调度回 UI 线程）───────────────
+    private void StartTimer()
     {
-        _cts?.Cancel();
-        _cts = new CancellationTokenSource();
-        var ct = _cts.Token;
-        _ = PollAsync(ct, tmpFile);
-    }
-
-    private async Task PollAsync(CancellationToken ct, string? tmpFile)
-    {
-        var sb = new System.Text.StringBuilder(128);
-        while (!ct.IsCancellationRequested)
+        StopTimer();
+        _timer = new Timer(_ =>
         {
-            await Task.Delay(500, ct).ConfigureAwait(false);
-            if (ct.IsCancellationRequested) break;
-
-            // 当前位置
-            sb.Clear();
-            mciSendString($"status {ALIAS} position", sb, 128, IntPtr.Zero);
-            if (long.TryParse(sb.ToString().Trim(), out long pos))
-                CurrentMs = pos;
-
+            long cur, dur;
+            lock (_lock)
+            {
+                if (_reader == null || !IsPlaying) return;
+                cur = (long)_reader.CurrentTime.TotalMilliseconds;
+                dur = (long)_reader.TotalTime.TotalMilliseconds;
+            }
             ProgressChanged?.Invoke(this, new AudioProgressEventArgs
             {
-                CurrentMs = CurrentMs, DurationMs = DurationMs
+                CurrentMs = cur, DurationMs = dur,
             });
-
-            // 检测播放结束
-            sb.Clear();
-            mciSendString($"status {ALIAS} mode", sb, 128, IntPtr.Zero);
-            if (sb.ToString().Trim() == "stopped")
-            {
-                IsPlaying = false;
-                PlaybackEnded?.Invoke(this, EventArgs.Empty);
-                // 清理临时文件
-                if (tmpFile != null)
-                {
-                    try { System.IO.File.Delete(tmpFile); } catch { }
-                }
-                break;
-            }
-        }
+        }, null, TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(500));
     }
 
-    private void StatusText(string _) { /* 可选：接入日志 */ }
+    private void StopTimer()
+    {
+        _timer?.Dispose();
+        _timer = null;
+    }
 
     public void Dispose() => Stop();
 }

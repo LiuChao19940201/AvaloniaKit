@@ -58,6 +58,7 @@ public partial class NeteasePlayerViewModel : ObservableObject
             try
             {
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+                // 封面 CDN(music.126.net) 自带 CORS:*，三端均可直连
                 byte[] bytes = await _http.GetByteArrayAsync(thumbUrl, cts.Token);
                 using var ms = new MemoryStream(bytes);
                 var bmp = new Bitmap(ms);
@@ -73,8 +74,7 @@ public partial class NeteasePlayerViewModel : ObservableObject
     {
         try
         {
-            string url = "https://music.163.com/api/v3/song/detail?c=" +
-                         Uri.EscapeDataString($"[{{\"id\":{songId}}}]");
+            string url = NeteaseApi.SongDetail(new[] { songId });
             string raw = await _http.GetStringAsync(url, ct);
             using var doc = JsonDocument.Parse(raw);
 
@@ -312,27 +312,30 @@ public partial class NeteasePlayerViewModel : ObservableObject
     private async Task<string?> GetPlayUrlAsync(long id, CancellationToken ct)
     {
         // ── 策略1：HEAD 验证（Browser 端 C# HttpClient 受 CORS 限制，跳过）────
-#if !BROWSER
-        string outerUrl = $"https://music.163.com/song/media/outer/url?id={id}.mp3";
-        try
+        //    ★ 共享工程只编译 net10.0，#if BROWSER 永不生效，必须用运行时判断
+        if (!OperatingSystem.IsBrowser())
         {
-            using var req = new HttpRequestMessage(HttpMethod.Head, outerUrl);
-            using var cts2 = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts2.CancelAfter(TimeSpan.FromSeconds(8));
-            var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cts2.Token);
-            string final = resp.RequestMessage?.RequestUri?.ToString() ?? outerUrl;
-            if (resp.IsSuccessStatusCode &&
-                (final.Contains(".mp3") || final.Contains("music.126.net")))
-                return final;
+            string outerUrl = $"https://music.163.com/song/media/outer/url?id={id}.mp3";
+            try
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Head, outerUrl);
+                using var cts2 = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts2.CancelAfter(TimeSpan.FromSeconds(8));
+                var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cts2.Token);
+                string final = resp.RequestMessage?.RequestUri?.ToString() ?? outerUrl;
+                if (resp.IsSuccessStatusCode &&
+                    (final.Contains(".mp3") || final.Contains("music.126.net")))
+                    return final;
+            }
+            catch { /* 继续下一策略 */ }
         }
-        catch { /* 继续下一策略 */ }
-#endif
 
         // ── 策略2：第三方镜像 API ─────────────────────────────────────────────
         string[] mirrors =
         {
-            $"https://netease-cloud-music-api-five-lyart.vercel.app/song/url?id={id}",
-            $"https://music-api.tonzhon.com/song/url?id={id}&br=128000",
+            // ★ NeteaseCloudMusicApi 镜像（带 CORS:*，Web 端主链路）；
+            //   旧 vercel/tonzhon 镜像实测已失效（超时/DNS 解析失败），予以替换
+            NeteaseApi.SongUrlMirror(id),
         };
 
         foreach (var api in mirrors)
@@ -532,7 +535,7 @@ public partial class NeteasePlayerViewModel : ObservableObject
         LyricStatus = "歌词加载中…";
         try
         {
-            string url = $"https://music.163.com/api/song/lyric?id={id}&lv=1&kv=1&tv=-1";
+            string url = NeteaseApi.Lyric(id);
             using var cts2 = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts2.CancelAfter(TimeSpan.FromSeconds(10));
             string raw = await _http.GetStringAsync(url, cts2.Token);

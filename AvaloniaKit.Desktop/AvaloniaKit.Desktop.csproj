@@ -19,6 +19,8 @@
   <ItemGroup>
     <!-- Desktop 平台专用包 -->
     <PackageReference Include="Avalonia.Desktop" />
+    <!-- 音频播放：MediaFoundation 流式解码 + WaveOut 输出 -->
+    <PackageReference Include="NAudio" />
     <!-- 显式引用以覆盖 Avalonia.Desktop 传递依赖的漏洞版本（NU1903） -->
     <PackageReference Include="Tmds.DBus.Protocol" />
     <PackageReference Include="sqlite-net-pcl" />
