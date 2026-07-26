@@ -465,6 +465,15 @@ public partial class NeteaseSongItem : ObservableObject
 {
     // ── 静态共享 HTTP 客户端 + 缓存 ──────────────────────────────────────────
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(8) };
+
+    // ★ 修复：封面下载也必须带 UA/Referer，否则部分图片 CDN 会拒绝导致封面加载失败
+    static NeteaseSongItem()
+    {
+        _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0");
+        _http.DefaultRequestHeaders.TryAddWithoutValidation("Referer", "https://music.163.com/");
+    }
+
     // key = thumbUrl, value = Bitmap(可能为null代表加载失败)
     private static readonly ConcurrentDictionary<string, Bitmap?> _bmpCache = new();
 

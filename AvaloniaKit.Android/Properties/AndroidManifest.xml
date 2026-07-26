@@ -11,5 +11,7 @@
 		</intent>
 	</queries>
 
-	<application android:label="AvaloniaKit" android:icon="@drawable/Icon" />
+	<!-- 网易云 302 跳转后的 CDN 地址为明文 http（mxxx.music.126.net），
+	     Android 9+ 默认禁止明文流量，必须显式放行，否则 MediaPlayer/HttpClient 静默失败 -->
+	<application android:label="AvaloniaKit" android:icon="@drawable/Icon" android:usesCleartextTraffic="true" />
 </manifest>

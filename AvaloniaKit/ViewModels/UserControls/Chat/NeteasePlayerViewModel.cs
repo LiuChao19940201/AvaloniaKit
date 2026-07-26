@@ -51,18 +51,21 @@ public partial class NeteasePlayerViewModel : ObservableObject
     private async Task LoadCoverBitmapAsync(string url)
     {
         if (string.IsNullOrEmpty(url)) return;
-        try
+        // ★ 播放页用大图（黑胶盘 + 模糊背景共用），失败自动重试一次
+        string thumbUrl = url.Contains('?') ? url : url + "?param=400y400";
+        for (int attempt = 0; attempt < 2; attempt++)
         {
-            string thumbUrl = url.Contains('?') ? url : url + "?param=240y240";
-            // ★ 修复：使用公共 _http + CancellationTokenSource 控制超时，
-            //   不再单独创建带 HttpClientHandler 的实例（Browser 平台不支持）
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
-            byte[] bytes = await _http.GetByteArrayAsync(thumbUrl, cts.Token);
-            using var ms = new MemoryStream(bytes);
-            var bmp = new Bitmap(ms);
-            await Dispatcher.UIThread.InvokeAsync(() => CoverBitmap = bmp);
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+                byte[] bytes = await _http.GetByteArrayAsync(thumbUrl, cts.Token);
+                using var ms = new MemoryStream(bytes);
+                var bmp = new Bitmap(ms);
+                await Dispatcher.UIThread.InvokeAsync(() => CoverBitmap = bmp);
+                return;
+            }
+            catch { await Task.Delay(600); /* 重试一次后仍失败则保持占位 */ }
         }
-        catch { /* 静默忽略，保持占位 */ }
     }
 
     [ObservableProperty]
@@ -101,7 +104,7 @@ public partial class NeteasePlayerViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ViewModeName))]
-    private bool _isLyricView = true;
+    private bool _isLyricView = false;   // ★ 默认黑胶封面视图，与网易云 App 一致
     public string ViewModeName => IsLyricView ? "封面" : "歌词";
 
     public ObservableCollection<LyricLine> LyricLines { get; } = new();
@@ -145,7 +148,7 @@ public partial class NeteasePlayerViewModel : ObservableObject
         CurrentLyricIndex = -1;
         LyricLines.Clear();
         HasLyric = false;
-        IsLyricView = true;
+        IsLyricView = false;   // ★ 每首歌默认先展示黑胶封面
         StatusText = "";
 
         SubscribeAudio();
@@ -491,7 +494,8 @@ public partial class LyricLine : ObservableObject
     [NotifyPropertyChangedFor(nameof(FontSize))]
     private bool _isActive = false;
 
+    // ★ 播放页改为深色模糊背景，歌词配色同步调整：当前行白色、其余半透白
     public string FontWeight => IsActive ? "SemiBold" : "Normal";
-    public string Foreground => IsActive ? "#C0392B" : "#AAAAAA";
+    public string Foreground => IsActive ? "#FFFFFF" : "#66FFFFFF";
     public double FontSize => IsActive ? 18 : 15;
 }
