@@ -87,6 +87,79 @@ public static class DouyinHtml
   .toast { position:fixed; left:50%; top:14%; transform:translateX(-50%); z-index:28;
            background:#000000b0; color:#fff; font-size:13px; padding:8px 16px;
            border-radius:18px; opacity:0; transition:opacity .25s; }
+
+  /* ══ 评论弹层 ══ */
+  .mask { position:fixed; inset:0; z-index:40; background:#00000080;
+          opacity:0; pointer-events:none; transition:opacity .22s; }
+  .mask.on { opacity:1; pointer-events:auto; }
+  .sheet { position:fixed; left:0; right:0; bottom:0; height:66%; z-index:41;
+           background:#161823; border-radius:16px 16px 0 0;
+           transform:translateY(105%); transition:transform .28s cubic-bezier(.2,.8,.3,1);
+           display:flex; flex-direction:column; }
+  .sheet.on { transform:translateY(0); }
+  .sheet-hd { position:relative; padding:14px 0 10px; text-align:center;
+              color:#ffffffd0; font-size:13px; flex:none; }
+  .sheet-x { position:absolute; right:6px; top:6px; width:36px; height:36px;
+             display:flex; align-items:center; justify-content:center;
+             color:#ffffff90; font-size:16px; }
+  .sheet-list { flex:1; overflow-y:auto; padding:2px 14px 12px;
+                -webkit-overflow-scrolling:touch; }
+  .c-item { display:flex; gap:10px; padding:10px 0; }
+  .c-ava { width:36px; height:36px; border-radius:50%; flex:none;
+           display:flex; align-items:center; justify-content:center;
+           color:#fff; font-size:15px; font-weight:700; }
+  .c-body { flex:1; min-width:0; }
+  .c-name { font-size:13px; color:#ffffff80; }
+  .c-text { font-size:14.5px; color:#fff; line-height:1.45; margin-top:3px; }
+  .c-meta { font-size:12px; color:#ffffff59; margin-top:4px; }
+  .c-like { flex:none; text-align:center; color:#ffffff73; font-size:12px;
+            padding-top:4px; min-width:30px; }
+  .c-like .h { font-size:16px; display:block; }
+  .c-like.on { color:#FE2C55; }
+  .sheet-input { flex:none; display:flex; align-items:center; gap:10px;
+                 padding:10px 14px calc(12px + env(safe-area-inset-bottom));
+                 border-top:1px solid #ffffff14; }
+  .fake-in { flex:1; background:#ffffff14; color:#ffffff60; font-size:14px;
+             border-radius:18px; padding:9px 14px; }
+  .sheet-input span { font-size:20px; color:#ffffffb0; }
+
+  /* ══ 博主主页 ══ */
+  .profile { position:fixed; inset:0; z-index:50; background:#121420;
+             transform:translateX(102%); transition:transform .26s cubic-bezier(.2,.8,.3,1);
+             overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .profile.on { transform:translateX(0); }
+  .p-cover { height:150px; background:linear-gradient(120deg,#2b2f4a,#4a2b3d,#1c2b3a);
+             background-size:200% 200%; animation:flow 8s ease infinite; }
+  @keyframes flow { 0%{background-position:0% 50%} 50%{background-position:100% 50%}
+                    100%{background-position:0% 50%} }
+  .p-back { position:fixed; left:8px; top:14px; z-index:52; width:40px; height:40px;
+            display:flex; align-items:center; justify-content:center;
+            color:#fff; font-size:22px; background:#00000059; border-radius:50%; }
+  .p-head { padding:0 16px 14px; margin-top:-38px; }
+  .p-avatar { width:76px; height:76px; border-radius:50%; border:3px solid #121420;
+              display:flex; align-items:center; justify-content:center;
+              color:#fff; font-size:30px; font-weight:700;
+              background:linear-gradient(135deg,#7F7FD5,#86A8E7,#91EAE4); }
+  .p-name { margin-top:10px; color:#fff; font-size:20px; font-weight:700; }
+  .p-id { margin-top:4px; color:#ffffff66; font-size:12.5px; }
+  .p-stats { margin-top:12px; color:#ffffff80; font-size:13px;
+             display:flex; gap:18px; }
+  .p-stats b { color:#fff; font-size:16px; margin-right:4px; }
+  .p-bio { margin-top:10px; color:#ffffffcc; font-size:13.5px; line-height:1.5; }
+  .p-btn { margin-top:14px; background:#FE2C55; color:#fff; text-align:center;
+           font-size:15px; font-weight:600; border-radius:6px; padding:11px 0; }
+  .p-btn.done { background:#ffffff1f; color:#ffffffb3; }
+  .p-tabs { display:flex; margin-top:6px; border-bottom:1px solid #ffffff14; }
+  .p-tabs span { flex:1; text-align:center; padding:11px 0; font-size:14px;
+                 color:#ffffff66; }
+  .p-tabs .on { color:#fff; font-weight:600; position:relative; }
+  .p-tabs .on::after { content:''; position:absolute; left:50%; bottom:0;
+                       transform:translateX(-50%); width:32px; height:2.5px;
+                       background:#FACE15; border-radius:2px; }
+  .p-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; padding:2px; }
+  .p-cell { position:relative; aspect-ratio:3/4; display:flex;
+            align-items:flex-end; padding:6px; }
+  .p-cell .pv { color:#fff; font-size:12px; text-shadow:0 1px 3px #000a; }
 </style>
 </head>
 <body>
@@ -102,7 +175,7 @@ public static class DouyinHtml
 <div class="side">
   <div class="avatar" id="avatar">A<span class="plus">+</span></div>
   <div class="act" id="btnLike"><span class="ico">&#10084;</span><span class="num" id="numLike">12.3w</span></div>
-  <div class="act"><span class="ico">&#128172;</span><span class="num" id="numCmt">8592</span></div>
+  <div class="act" id="btnCmt"><span class="ico">&#128172;</span><span class="num" id="numCmt">8592</span></div>
   <div class="act"><span class="ico">&#11088;</span><span class="num" id="numFav">2.1w</span></div>
   <div class="act"><span class="ico">&#10148;</span><span class="num" id="numShare">6034</span></div>
   <div class="disc">&#127925;</div>
@@ -119,6 +192,34 @@ public static class DouyinHtml
 <div class="pauseIco" id="pauseIco">&#9654;</div>
 <div class="toast" id="toast"></div>
 
+<!-- 评论弹层 -->
+<div class="mask" id="cmtMask"></div>
+<div class="sheet" id="cmtSheet">
+  <div class="sheet-hd"><span id="cmtCount">0条评论</span><span class="sheet-x" id="cmtClose">&#10005;</span></div>
+  <div class="sheet-list" id="cmtList"></div>
+  <div class="sheet-input"><div class="fake-in">善语结善缘，恶语伤人心…</div><span>@</span><span>&#128522;</span></div>
+</div>
+
+<!-- 博主主页 -->
+<div class="profile" id="profilePage">
+  <div class="p-back" id="pBack">&#10094;</div>
+  <div class="p-cover"></div>
+  <div class="p-head">
+    <div class="p-avatar" id="pAvatar">A</div>
+    <div class="p-name" id="pName">@小可爱</div>
+    <div class="p-id" id="pId">抖音号：dy10086</div>
+    <div class="p-stats">
+      <span><b id="pLikes">12.3w</b>获赞</span>
+      <span><b id="pFollow">321</b>关注</span>
+      <span><b id="pFans">8.8w</b>粉丝</span>
+    </div>
+    <div class="p-bio" id="pBio">分享生活中的美好瞬间 ✨ 商务合作请私信</div>
+    <div class="p-btn" id="pFollowBtn">+ 关注</div>
+  </div>
+  <div class="p-tabs"><span class="on" id="pTabWorks">作品</span><span id="pTabLikes">喜欢</span></div>
+  <div class="p-grid" id="pGrid"></div>
+</div>
+
 <script>
 (function(){
   // ── 视频源池：公开短视频 API（302 → CDN mp4），带随机参数防缓存 ──
@@ -128,21 +229,57 @@ public static class DouyinHtml
     'https://api.yujn.cn/api/nvda.php?type=video',
     'https://api.yujn.cn/api/manhuay.php?type=video'
   ];
-  var names  = ['小可爱','时光机','旅行日记','美食家阿伟','街拍先生','山海故事','奶茶不加冰','慢生活研究所'];
+  var names  = ['小可爱','阿May','旅行日记','美食家阿伟','街拍先生','山海故事','奶茶不加冰','慢生活研究所',
+                '是阿柚啊','午后阳光','城市漫游者','会飞的鱼','麦子熟了','一只柯基','海边的卡夫卡','鹿归林',
+                '桃气少女','老张的日常','摄影师K','元气少年','云端漫步','小鹿乱撞','阿泽Vlog','甜筒不加料',
+                '追风少年','夏天的风','木木的手账','大力出奇迹','阿七拍拍','橘子汽水','山野来信','阿浩爱运动',
+                '小满','深夜食堂','会画画的猫','浪里个浪','阿蓝的相册','闲不住的多多','南方的冬','西瓜味的夏天',
+                '阿满的厨房','行走的地图','小尾巴','喵星研究所','日落收藏家','阿哲','小城故事','爱睡觉的猪'];
   var texts  = ['记录美好生活的每一个瞬间 #日常 #治愈','这条视频拍了三个小时，值了！#vlog',
                 '谁能拒绝这样的风景呢 #旅行 #风光','今日份快乐已送达 #开心 #日常碎片',
                 '第一次尝试这样拍，效果意外的好 #创意','慢下来，生活其实很美 #治愈系 #慢生活',
-                '这个BGM也太上头了吧 #音乐 #热门','周末的正确打开方式 #周末 #放松'];
+                '这个BGM也太上头了吧 #音乐 #热门','周末的正确打开方式 #周末 #放松',
+                '跟着我镜头看世界 #风景 #旅行日记','平凡的一天也值得被记录 #生活',
+                '谁懂啊这也太治愈了 #治愈 #日常','学会了记得点赞收藏哦 #教程 #干货',
+                '这一刻突然觉得很幸福 #vlog #生活碎片','阳光正好，微风不燥 #晴天 #出片',
+                '拍了好久终于满意了 #摄影 #出片','生活需要一点仪式感 #日常 #氛围感',
+                '今天也是元气满满的一天 #正能量','分享一个我最近很爱的地方 #探店 #宝藏',
+                '不期而遇的美好 #随手拍','愿你我都被生活温柔以待 #治愈系',
+                '这波操作我给满分 #高能 #热门','人间烟火气最抚凡人心 #生活 #美食',
+                '收藏这条，周末就出发 #攻略','简单的快乐最动人 #日常vlog'];
   var musics = ['创作的原声 - 抖音热门BGM','夏天的风 - 温柔女声版','Sunny Day - Chill Beats',
-                '人间烟火 - 治愈钢琴曲','热门卡点BGM - DJ版','晚风轻拂 - 民谣弹唱'];
+                '人间烟火 - 治愈钢琴曲','热门卡点BGM - DJ版','晚风轻拂 - 民谣弹唱',
+                '海边的旋律 - Lo-Fi','漫步云端 - 轻音乐','城市夜色 - Deep House',
+                '温柔告白 - 吉他版','旅途 - 纯音乐','初夏 - 钢琴曲',
+                '星空下 - 治愈系','慢摇时光 - Remix','清晨第一缕阳光 - BGM','热门神曲 - 卡点版'];
 
   var vd = document.getElementById('vd'), bar = document.getElementById('bar');
   var spin = document.getElementById('spin'), pauseIco = document.getElementById('pauseIco');
   var toast = document.getElementById('toast');
   var idx = 0, liked = false, toastTimer = 0;
+  var curWho = '小可爱';   // 当前视频作者（评论/主页共用）
+
+  // ── 覆盖层状态：评论/主页打开时屏蔽切视频与播放切换手势 ──
+  function overlayOpen(){
+    return document.getElementById('cmtSheet').classList.contains('on') ||
+           document.getElementById('profilePage').classList.contains('on');
+  }
 
   function rndNum(){ var n = Math.random()*30; return n>10 ? n.toFixed(1)+'w' : Math.floor(n*9000+500)+''; }
   function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+
+  // ★ 不与上一次重复的随机选取（避免“同一博主连着刷”的重复感）
+  function pickNoRepeat(a, last){
+    if (a.length < 2) return a[0];
+    var v; do { v = pick(a); } while (v === last);
+    return v;
+  }
+  var _lastApi = '';
+  function nextApi(){
+    var u = pickNoRepeat(apis, _lastApi);
+    _lastApi = u;
+    return u;
+  }
 
   function showToast(t){
     toast.textContent = t; toast.style.opacity = 1;
@@ -159,7 +296,8 @@ public static class DouyinHtml
     document.getElementById('numCmt').textContent  = rndNum();
     document.getElementById('numFav').textContent  = rndNum();
     document.getElementById('numShare').textContent= rndNum();
-    var who = pick(names);
+    var who = pickNoRepeat(names, curWho);
+    curWho = who;
     document.getElementById('who').textContent = '@' + who;
     document.getElementById('avatar').firstChild.textContent = who[0];
     document.getElementById('txt').textContent = pick(texts);
@@ -169,8 +307,7 @@ public static class DouyinHtml
     pauseIco.style.display = 'none';
     vd.style.opacity = 0;
     bar.style.width = 0;
-    vd.src = apis[idx % apis.length] + '&_t=' + Date.now();
-    idx++;
+    vd.src = nextApi() + '&_t=' + Date.now() + Math.floor(Math.random()*1000);
     vd.load();
     var p = vd.play();
     if (p) p.catch(function(){ pauseIco.style.display = 'block'; spin.style.display = 'none'; });
@@ -185,8 +322,8 @@ public static class DouyinHtml
     if (vd.duration) bar.style.width = (vd.currentTime / vd.duration * 100) + '%';
   });
 
-  // ── 单击暂停/播放，双击飘心点赞 ──
-  var lastTap = 0, tapTimer = 0;
+  // ── 单击立即暂停/播放（零延迟跟手），双击飘心点赞 ──
+  var lastTap = 0;
   function heartAt(x, y){
     var h = document.createElement('div');
     h.className = 'heart'; h.textContent = '\u2764';
@@ -195,40 +332,44 @@ public static class DouyinHtml
     setTimeout(function(){ h.remove(); }, 900);
     if (!liked){ liked = true; document.getElementById('btnLike').classList.add('liked'); }
   }
+  function togglePlay(){
+    if (vd.paused){ vd.play(); pauseIco.style.display = 'none'; }
+    else { vd.pause(); pauseIco.style.display = 'block'; }
+  }
   function onTap(x, y){
     var now = Date.now();
-    if (now - lastTap < 280){          // 双击：点赞飘心
-      clearTimeout(tapTimer);
+    if (now - lastTap < 300){          // 双击：点赞飘心，并抵消首击的暂停切换
       lastTap = 0;
+      togglePlay();                    // 恢复首击前的播放状态
       heartAt(x, y);
       return;
     }
     lastTap = now;
-    tapTimer = setTimeout(function(){   // 单击：暂停/播放
-      if (vd.paused){ vd.play(); pauseIco.style.display = 'none'; }
-      else { vd.pause(); pauseIco.style.display = 'block'; }
-    }, 285);
+    togglePlay();                      // ★ 单击立即生效，不再等双击判定延迟
   }
 
-  // ── 手势：触摸上/下滑切换；滚轮切换（桌面/网页） ──
-  var ty = 0, tx = 0, moved = false;
+  // ── 手势：触摸上/下滑切换；滚轮切换（桌面/网页）──
+  var ty = 0, tx = 0, moved = false, lastTouchTime = 0;
   document.addEventListener('touchstart', function(e){
     ty = e.touches[0].clientY; tx = e.touches[0].clientX; moved = false;
   }, {passive:true});
   document.addEventListener('touchmove', function(){ moved = true; }, {passive:true});
   document.addEventListener('touchend', function(e){
+    lastTouchTime = Date.now();                    // ★ 屏蔽随后的合成 click，防重复触发
+    if (overlayOpen()) return;                     // 弹层内滑动不切视频
     var dy = e.changedTouches[0].clientY - ty;
     var dx = e.changedTouches[0].clientX - tx;
     if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx)){
       load();                            // 上滑/下滑都切下一条（源为随机流）
     } else if (!moved){
       var t = e.target;
-      if (!t.closest('.side') && !t.closest('.topbar')) onTap(tx, ty);
+      if (!t.closest('.side') && !t.closest('.topbar') && !t.closest('.info')) onTap(tx, ty);
     }
   }, {passive:true});
 
   var wheelLock = 0;
   document.addEventListener('wheel', function(e){
+    if (overlayOpen()) return;
     var now = Date.now();
     if (now - wheelLock < 700) return;
     if (Math.abs(e.deltaY) > 40){ wheelLock = now; load(); }
@@ -236,7 +377,12 @@ public static class DouyinHtml
 
   // 鼠标单双击（桌面 WebView / 浏览器）
   document.addEventListener('click', function(e){
-    if (e.target.closest('.side') || e.target.closest('.topbar')) return;
+    // ★ 触屏设备：touchend 已处理，忽略浏览器补发的合成 click（否则暂停会被抵消）
+    if (Date.now() - lastTouchTime < 600) return;
+    if (overlayOpen()) return;
+    if (e.target.closest('.side') || e.target.closest('.topbar') ||
+        e.target.closest('.info') || e.target.closest('.sheet') ||
+        e.target.closest('.profile') || e.target.closest('.mask')) return;
     onTap(e.clientX, e.clientY);
   });
 
@@ -248,12 +394,119 @@ public static class DouyinHtml
     if (liked) heartAt(window.innerWidth - 80, window.innerHeight - 300);
   });
   Array.prototype.forEach.call(document.querySelectorAll('.act'), function(el){
-    if (el.id === 'btnLike') return;
+    if (el.id === 'btnLike' || el.id === 'btnCmt') return;
     el.addEventListener('click', function(e){ e.stopPropagation(); showToast('演示模式：功能仅供展示'); });
   });
   document.getElementById('avatar').addEventListener('click', function(e){
-    e.stopPropagation(); showToast('已关注');
-    this.querySelector('.plus').style.display = 'none';
+    e.stopPropagation(); openProfile();
+  });
+  document.getElementById('who').addEventListener('click', function(e){
+    e.stopPropagation(); openProfile();
+  });
+
+  // ══ 评论弹层 ════════════════════════════════════════════════
+  var cmtPool = [
+    '这个必须赞！拍得太好了','前排占座，每天都来打卡','哈哈哈哈笑死我了',
+    'BGM 叫什么？求同款','这是在哪里拍的呀，好想去','收藏了，周末就安排',
+    '镜头感绝了，求教程','看完舍不得划走的程度','这才是生活该有的样子',
+    '三连了，期待更新','每一帧都是壁纸','评论区有同好吗？报到！',
+    '被治愈到了，谢谢分享','顶住，不要划走','这拍摄水平可以出道了'
+  ];
+  var cmtColors = ['#7F7FD5','#E8544C','#3D9F6E','#C97BC3','#5B8DEF','#D8A24B'];
+
+  function buildComments(){
+    var list = document.getElementById('cmtList');
+    list.innerHTML = '';
+    var n = 6 + Math.floor(Math.random() * 6);
+    for (var i = 0; i < n; i++){
+      var name = pick(names);
+      var item = document.createElement('div');
+      item.className = 'c-item';
+      item.innerHTML =
+        '<div class="c-ava" style="background:' + pick(cmtColors) + '">' + name[0] + '</div>' +
+        '<div class="c-body"><div class="c-name">' + name + '</div>' +
+        '<div class="c-text">' + pick(cmtPool) + '</div>' +
+        '<div class="c-meta">' + (1 + Math.floor(Math.random()*23)) + '小时前 · 回复</div></div>' +
+        '<div class="c-like"><span class="h">&#9825;</span>' + Math.floor(Math.random()*9000+100) + '</div>';
+      item.querySelector('.c-like').addEventListener('click', function(){
+        this.classList.toggle('on');
+        this.querySelector('.h').innerHTML = this.classList.contains('on') ? '&#10084;' : '&#9825;';
+      });
+      list.appendChild(item);
+    }
+    document.getElementById('cmtCount').textContent =
+      document.getElementById('numCmt').textContent + '条评论';
+  }
+  function openComments(){
+    buildComments();
+    document.getElementById('cmtMask').classList.add('on');
+    document.getElementById('cmtSheet').classList.add('on');
+  }
+  function closeComments(){
+    document.getElementById('cmtMask').classList.remove('on');
+    document.getElementById('cmtSheet').classList.remove('on');
+  }
+  document.getElementById('btnCmt').addEventListener('click', function(e){
+    e.stopPropagation(); openComments();
+  });
+  document.getElementById('cmtClose').addEventListener('click', closeComments);
+  document.getElementById('cmtMask').addEventListener('click', closeComments);
+
+  // ══ 博主主页 ══════════════════════════════════════════════
+  var bios = ['分享生活中的美好瞬间 ✨ 商务合作请私信','记录平凡日子里的小确幸 ☀︎',
+              '爱拍视频的日常博主｜每周三六更新','镜头里的世界比想象更精彩 🎬',
+              '一起发现好玩的事物吧｜合作请私信'];
+  var gridColors = ['#2E3350','#503048','#2C4638','#4A3A2A','#31425C','#452F2F',
+                    '#3B2F52','#2F4A4A','#523F2C'];
+
+  function openProfile(){
+    document.getElementById('pAvatar').textContent = curWho[0];
+    document.getElementById('pName').textContent = '@' + curWho;
+    document.getElementById('pId').textContent =
+      '抖音号：dy' + Math.floor(Math.random()*90000000+10000000);
+    document.getElementById('pLikes').textContent = rndNum();
+    document.getElementById('pFollow').textContent = Math.floor(Math.random()*500+20);
+    document.getElementById('pFans').textContent = rndNum();
+    document.getElementById('pBio').textContent = pick(bios);
+    var btn = document.getElementById('pFollowBtn');
+    btn.classList.remove('done'); btn.textContent = '+ 关注';
+    buildGrid();
+    document.getElementById('profilePage').classList.add('on');
+    vd.pause(); pauseIco.style.display = 'none';   // 进主页暂停播放
+  }
+  function closeProfile(){
+    document.getElementById('profilePage').classList.remove('on');
+    if (vd.paused){ vd.play(); }                    // 返回续播
+  }
+  function buildGrid(){
+    var grid = document.getElementById('pGrid');
+    grid.innerHTML = '';
+    var n = 9 + Math.floor(Math.random()*4);
+    for (var i = 0; i < n; i++){
+      var cell = document.createElement('div');
+      cell.className = 'p-cell';
+      cell.style.background =
+        'linear-gradient(160deg,' + pick(gridColors) + ',' + pick(gridColors) + ')';
+      cell.innerHTML = '<span class="pv">&#9654; ' + rndNum() + '</span>';
+      cell.addEventListener('click', function(){ closeProfile(); load(); });
+      grid.appendChild(cell);
+    }
+  }
+  document.getElementById('pBack').addEventListener('click', closeProfile);
+  document.getElementById('pFollowBtn').addEventListener('click', function(){
+    var on = this.classList.toggle('done');
+    this.textContent = on ? '已关注' : '+ 关注';
+    showToast(on ? '关注成功' : '已取消关注');
+  });
+  document.getElementById('pTabWorks').addEventListener('click', function(){
+    this.classList.add('on');
+    document.getElementById('pTabLikes').classList.remove('on');
+    buildGrid();
+  });
+  document.getElementById('pTabLikes').addEventListener('click', function(){
+    this.classList.add('on');
+    document.getElementById('pTabWorks').classList.remove('on');
+    buildGrid();
   });
 
   // ── 返回：iframe → postMessage；WebView → app://exit 导航 ──

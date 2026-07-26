@@ -110,6 +110,34 @@
 									</Viewbox>
 								</Panel>
 
+								<!-- 抖音入口：黑底 + 青/红错位音符 logo -->
+								<Panel IsVisible="{Binding IsDouyin}">
+									<Border Width="46" Height="46" CornerRadius="10" Background="#161823"/>
+									<Viewbox Width="26" Height="26"
+											 HorizontalAlignment="Center" VerticalAlignment="Center">
+										<Canvas Width="24" Height="24">
+											<!-- 青色层（左下错位） -->
+											<Canvas Canvas.Left="-0.9" Canvas.Top="0.9">
+												<Line StartPoint="13.5,4" EndPoint="13.5,15.6" Stroke="#25F4EE" StrokeThickness="2.6" StrokeLineCap="Round"/>
+												<Ellipse Canvas.Left="8" Canvas.Top="13.6" Width="6.6" Height="5.4" Fill="#25F4EE"/>
+												<Path Data="M13.5 4.6 C14.6 7.4 17.2 9.2 20.2 9.4" Stroke="#25F4EE" StrokeThickness="2.6" StrokeLineCap="Round" Fill="Transparent"/>
+											</Canvas>
+											<!-- 红色层（右上错位） -->
+											<Canvas Canvas.Left="0.9" Canvas.Top="-0.9">
+												<Line StartPoint="13.5,4" EndPoint="13.5,15.6" Stroke="#FE2C55" StrokeThickness="2.6" StrokeLineCap="Round"/>
+												<Ellipse Canvas.Left="8" Canvas.Top="13.6" Width="6.6" Height="5.4" Fill="#FE2C55"/>
+												<Path Data="M13.5 4.6 C14.6 7.4 17.2 9.2 20.2 9.4" Stroke="#FE2C55" StrokeThickness="2.6" StrokeLineCap="Round" Fill="Transparent"/>
+											</Canvas>
+											<!-- 白色主体 -->
+											<Canvas>
+												<Line StartPoint="13.5,4" EndPoint="13.5,15.6" Stroke="White" StrokeThickness="2.6" StrokeLineCap="Round"/>
+												<Ellipse Canvas.Left="8" Canvas.Top="13.6" Width="6.6" Height="5.4" Fill="White"/>
+												<Path Data="M13.5 4.6 C14.6 7.4 17.2 9.2 20.2 9.4" Stroke="White" StrokeThickness="2.6" StrokeLineCap="Round" Fill="Transparent"/>
+											</Canvas>
+										</Canvas>
+									</Viewbox>
+								</Panel>
+
 								<!-- 普通聊天：绿色 + 微信气泡 -->
 								<Panel IsVisible="{Binding !IsSpecialEntry}">
 									<Border Width="46" Height="46" CornerRadius="8" Background="#07C160"/>
