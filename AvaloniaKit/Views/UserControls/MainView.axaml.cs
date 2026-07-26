@@ -18,6 +18,9 @@ namespace AvaloniaKit.Views.UserControls;
 //  · 拖动过程中页面跟随手指做阻尼位移，松手后回弹（或返回）
 //  · 仅子页面生效（MainWindowViewModel.CanGoBack），四个主 Tab 不受影响
 //  · 按在 Slider / ScrollBar 上不启动手势，避免劫持进度条等横向拖动
+//  · ★ Android 全面屏手势下，屏幕边缘滑动被系统拦截并触发系统 Back，
+//    因此同时监听 TopLevel.BackRequested：子页面时拦截并返回上一级，
+//    而不是退出 App；主 Tab 时不拦截，保留系统默认行为
 // ══════════════════════════════════════════════════════════════════════════════
 public partial class MainView : UserControl
 {
@@ -30,6 +33,7 @@ public partial class MainView : UserControl
     private Point _startPos;
     private readonly TranslateTransform _pageShift = new();
     private CancellationTokenSource? _resetCts;
+    private TopLevel? _topLevel;           // ★ 已订阅 BackRequested 的 TopLevel
 
     public MainView()
     {
@@ -49,6 +53,32 @@ public partial class MainView : UserControl
     }
 
     private MainWindowViewModel? Vm => DataContext as MainWindowViewModel;
+
+    // ── ★ 系统返回（Android 返回键 / 全面屏边缘手势）接入 ───────────────
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _topLevel = TopLevel.GetTopLevel(this);
+        if (_topLevel != null)
+            _topLevel.BackRequested += OnBackRequested;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        if (_topLevel != null)
+        {
+            _topLevel.BackRequested -= OnBackRequested;
+            _topLevel = null;
+        }
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void OnBackRequested(object? sender, RoutedEventArgs e)
+    {
+        // 子页面：拦截系统返回，回到上一级而不是退出 App；主 Tab 时放行
+        if (Vm is { CanGoBack: true } vm && vm.TryGoBackFromSubPage())
+            e.Handled = true;
+    }
 
     // ── 按下：只在「子页面 + 右缘区域 + 非滑杆控件」时开始观察 ──────────────
     private void OnPagePressed(object? sender, PointerPressedEventArgs e)

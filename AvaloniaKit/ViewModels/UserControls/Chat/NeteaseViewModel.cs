@@ -1,6 +1,7 @@
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using AvaloniaKit.Messages;
+using AvaloniaKit.Services;
 using AvaloniaKit.Tools.Extensions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -123,6 +124,15 @@ public partial class NeteaseViewModel : ObservableObject,
     {
         if (RecommendSongs.Count == 0)
             _ = LoadRecommendAsync();
+        SyncPlaybackState();
+    }
+
+    // ── ★ 同步迷你播放栏状态（从播放器页返回时调用）─────────────────────────
+    public void SyncPlaybackState()
+    {
+        var audio = ServiceLocator.AudioService;
+        if (audio != null && CurrentSong != null)
+            IsPlaying = audio.IsPlaying;
     }
 
     // ── 导航 ─────────────────────────────────────────────────────────────────
@@ -149,6 +159,23 @@ public partial class NeteaseViewModel : ObservableObject,
     private void OpenPlayer()
     {
         if (CurrentSong is null) return;
+        SendNavigateToPlayer(CurrentSong);
+    }
+
+    // ── ★ 迷你播放栏：播放/暂停按钮只控制播放状态，不跳转详情页 ────────────
+    [RelayCommand]
+    private void TogglePlay()
+    {
+        if (CurrentSong is null) return;
+
+        var audio = ServiceLocator.AudioService;
+        if (audio != null && audio.DurationMs > 0)
+        {
+            if (audio.IsPlaying) { audio.Pause(); IsPlaying = false; }
+            else { audio.Resume(); IsPlaying = true; }
+            return;
+        }
+        // 音频尚未加载（异常场景）：进播放器页重新加载
         SendNavigateToPlayer(CurrentSong);
     }
 
@@ -409,34 +436,76 @@ public partial class NeteaseViewModel : ObservableObject,
 
         try
         {
-            string url = $"https://music.163.com/api/search/get/web?s={Uri.EscapeDataString(keyword)}&type=1&limit=20&offset=0";
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            string raw = await _http.GetStringAsync(url, cts.Token);
-            using var doc = JsonDocument.Parse(raw);
-            var root = doc.RootElement;
+            // ★ 官方 cloudsearch 接口：返回 v3 结构（ar/al/dt + privilege），
+            //   与推荐/榜单同一条解析管线，封面、时长齐全，并可过滤不可播曲目
+            await SearchCloudAsync(keyword);
+            // 兜底：老 web 接口只取 id，再走 song/detail 补全封面
+            if (SearchResults.Count == 0)
+                await SearchLegacyAsync(keyword);
 
-            if (root.TryGetProperty("result", out var result) &&
-                result.TryGetProperty("songs", out var songs) &&
-                songs.ValueKind == JsonValueKind.Array)
-            {
-                var seen = new HashSet<long>();
-                foreach (var s in songs.EnumerateArray())
-                {
-                    var item = ParseSearchSong(s);
-                    if (item != null && seen.Add(item.Id))
-                        SearchResults.Add(item);
-                }
-                SearchStatus = SearchResults.Count > 0
-                    ? $"找到 {SearchResults.Count} 首"
-                    : "未找到相关歌曲";
-            }
-            else
-            {
-                SearchStatus = "未找到相关歌曲";
-            }
+            SearchStatus = SearchResults.Count > 0
+                ? $"找到 {SearchResults.Count} 首"
+                : "未找到可播放的歌曲";
         }
         catch { SearchStatus = "搜索失败，请检查网络"; }
         finally { IsSearchLoading = false; }
+    }
+
+    // ── ★ cloudsearch：官方搜索主链路 ──
+    private async Task SearchCloudAsync(string keyword)
+    {
+        try
+        {
+            string url = $"https://music.163.com/api/cloudsearch/pc?s={Uri.EscapeDataString(keyword)}&type=1&limit=30&offset=0";
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            string raw = await _http.GetStringAsync(url, cts.Token);
+            using var doc = JsonDocument.Parse(raw);
+
+            if (!doc.RootElement.TryGetProperty("result", out var result) ||
+                !result.TryGetProperty("songs", out var songs) ||
+                songs.ValueKind != JsonValueKind.Array)
+                return;
+
+            var seen = new HashSet<long>();
+            foreach (var s in songs.EnumerateArray())
+            {
+                // ★ 过滤播不了的：已下架(st<0) 或匿名无任何可播码率(pl<=0，VIP/无版权)
+                if (s.TryGetProperty("privilege", out var priv) &&
+                    priv.ValueKind == JsonValueKind.Object)
+                {
+                    if (priv.TryGetLong("st") < 0 || priv.TryGetLong("pl") <= 0)
+                        continue;
+                }
+
+                var item = ParseSongItem(s);
+                if (item != null && seen.Add(item.Id))
+                    SearchResults.Add(item);
+            }
+        }
+        catch { /* 保持为空，由老接口兜底 */ }
+    }
+
+    // ── 老 web 搜索兜底：只取 id，经 song/detail 补全封面/时长 ──
+    private async Task SearchLegacyAsync(string keyword)
+    {
+        string url = $"https://music.163.com/api/search/get/web?s={Uri.EscapeDataString(keyword)}&type=1&limit=20&offset=0";
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        string raw = await _http.GetStringAsync(url, cts.Token);
+        using var doc = JsonDocument.Parse(raw);
+
+        if (!doc.RootElement.TryGetProperty("result", out var result) ||
+            !result.TryGetProperty("songs", out var songs) ||
+            songs.ValueKind != JsonValueKind.Array)
+            return;
+
+        var ids = new List<long>();
+        foreach (var s in songs.EnumerateArray())
+        {
+            long id = s.TryGetLong("id");
+            if (id != 0 && !ids.Contains(id)) ids.Add(id);
+        }
+        if (ids.Count > 0)
+            await LoadSongDetailAsync(SearchResults, ids);
     }
 
     // ── 解析歌曲（兼容 v3 song/detail 的 ar/al/dt 与老接口的 artists/album/duration）──
@@ -485,49 +554,6 @@ public partial class NeteaseViewModel : ObservableObject,
 
             long durationMs = t.TryGetLong("dt");
             if (durationMs == 0) durationMs = t.TryGetLong("duration");
-
-            return new NeteaseSongItem
-            {
-                Id = id,
-                Name = name,
-                Artist = artist,
-                Album = album,
-                CoverUrl = cover,
-                DurationMs = durationMs,
-            };
-        }
-        catch { return null; }
-    }
-
-    private static NeteaseSongItem? ParseSearchSong(JsonElement s)
-    {
-        try
-        {
-            long id = s.TryGetLong("id");
-            if (id == 0) return null;
-            string name = s.TryGetStr("name") ?? "未知歌曲";
-
-            string artist = "未知歌手";
-            if (s.TryGetProperty("artists", out var artists) && artists.ValueKind == JsonValueKind.Array)
-            {
-                var names = new List<string>();
-                foreach (var a in artists.EnumerateArray())
-                {
-                    string? n = a.TryGetStr("name");
-                    if (!string.IsNullOrEmpty(n)) names.Add(n);
-                }
-                if (names.Count > 0) artist = string.Join("/", names);
-            }
-
-            string album = "";
-            string cover = "";
-            if (s.TryGetProperty("album", out var alb))
-            {
-                album = alb.TryGetStr("name") ?? "";
-                cover = alb.TryGetStr("picUrl") ?? alb.TryGetStr("blurPicUrl") ?? "";
-            }
-
-            long durationMs = s.TryGetLong("duration");
 
             return new NeteaseSongItem
             {

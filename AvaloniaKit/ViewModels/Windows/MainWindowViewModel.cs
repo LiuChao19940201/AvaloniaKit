@@ -56,9 +56,13 @@ public partial class MainWindowViewModel : ObservableObject,
     [NotifyPropertyChangedFor(nameof(ShowTabBar))]
     private ObservableObject _currentPage;
 
+    /// <summary>★ 当前实例，供平台宿主（如 Android MainActivity 返回回调）直接访问</summary>
+    public static MainWindowViewModel? Current { get; private set; }
+
     public MainWindowViewModel()
     {
         _currentPage = _chatVm;
+        Current = this;
         WeakReferenceMessenger.Default.RegisterAll(this);
     }
 
@@ -185,7 +189,11 @@ public partial class MainWindowViewModel : ObservableObject,
     }
 
     public void Receive(NavigateBackFromNeteasePlayerMessage message)
-        => CurrentPage = _neteaseVm;
+    {
+        // ★ 回到列表页时同步迷你播放栏的播放/暂停图标（用户可能在播放器页暂停过）
+        _neteaseVm.SyncPlaybackState();
+        CurrentPage = _neteaseVm;
+    }
 
     public void Receive(NavigateToWeatherMessage message)
     {

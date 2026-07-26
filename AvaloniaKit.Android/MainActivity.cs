@@ -2,6 +2,7 @@ using Android.App;
 using Android.Content;
 using Android.Content.PM;
 using Android.OS;
+using AndroidX.Activity;
 using AndroidX.Core.View;
 using Avalonia;
 using Avalonia.Android;
@@ -10,6 +11,7 @@ using Avalonia.ReactiveUI;
 using AvaloniaKit.Android.Data;
 using AvaloniaKit.Android.Services;
 using AvaloniaKit.Services;
+using AvaloniaKit.ViewModels.Windows;
 using System;
 using System.IO;
 using Color = Android.Graphics.Color;
@@ -59,6 +61,11 @@ namespace AvaloniaKit.Android
 
             base.OnCreate(savedInstanceState);
 
+            // ★ 系统返回兜底：子页面回上一级，主 Tab 才退出 App。
+            //   必须在 base.OnCreate 之后注册，LIFO 顺序保证优先于 Avalonia 内部回调执行，
+            //   避免全面屏手势/返回键直接结束 Activity。
+            OnBackPressedDispatcher.AddCallback(this, new SubPageBackCallback(this));
+
             if (Window != null)
             {
                 WindowCompat.SetDecorFitsSystemWindows(Window, false);
@@ -86,6 +93,30 @@ namespace AvaloniaKit.Android
         {
             base.OnActivityResult(requestCode, resultCode, data);
             AndroidImagePickerService.HandleActivityResult(requestCode, resultCode, data, ContentResolver!);
+        }
+
+        /// <summary>
+        /// ★ 拦截系统返回（返回键 / 全面屏边缘手势）：
+        /// 子页面时复用共享层 TryGoBackFromSubPage 回上一级；
+        /// 主 Tab 时临时禁用自身并重新分发，交还系统默认行为（退出）。
+        /// </summary>
+        private sealed class SubPageBackCallback : OnBackPressedCallback
+        {
+            private readonly MainActivity _activity;
+
+            public SubPageBackCallback(MainActivity activity) : base(true)
+                => _activity = activity;
+
+            public override void HandleOnBackPressed()
+            {
+                var vm = MainWindowViewModel.Current;
+                if (vm is { CanGoBack: true } && vm.TryGoBackFromSubPage())
+                    return;
+
+                Enabled = false;
+                _activity.OnBackPressedDispatcher.OnBackPressed();
+                Enabled = true;
+            }
         }
     }
 }

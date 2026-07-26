@@ -31,8 +31,11 @@
                         <Viewbox Grid.Column="0" Width="24" Height="24"
                                  HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Canvas Width="24" Height="24">
-                                <Path Data="M22 16V4C22 2.9 21.1 2 20 2H8C6.9 2 6 2.9 6 4V16C6 17.1 6.9 18 8 18H20C21.1 18 22 17.1 22 16ZM11 12L13.03 14.71L16 11L20 16H8L11 12ZM2 6V20C2 21.1 2.9 22 4 22H18V20H4V6H2Z"
-                                      Fill="#2D8CF0"/>
+                                <!-- 仿微信朋友圈：四色花瓣圆环 -->
+                                <Path Data="M13.46 3.73 A8.4 8.4 0 0 1 20.27 10.54" Stroke="#E75E58" StrokeThickness="3.2" StrokeLineCap="Round" Fill="Transparent"/>
+                                <Path Data="M20.27 13.46 A8.4 8.4 0 0 1 13.46 20.27" Stroke="#FDBC3B" StrokeThickness="3.2" StrokeLineCap="Round" Fill="Transparent"/>
+                                <Path Data="M10.54 20.27 A8.4 8.4 0 0 1 3.73 13.46" Stroke="#57BE6A" StrokeThickness="3.2" StrokeLineCap="Round" Fill="Transparent"/>
+                                <Path Data="M3.73 10.54 A8.4 8.4 0 0 1 10.54 3.73" Stroke="#50A7EA" StrokeThickness="3.2" StrokeLineCap="Round" Fill="Transparent"/>
                             </Canvas>
                         </Viewbox>
                         <TextBlock Grid.Column="1" Text="朋友圈"
@@ -73,8 +76,9 @@
                             <Viewbox Grid.Column="0" Width="24" Height="24"
                                      HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <Canvas Width="24" Height="24">
-                                    <Path Data="M17 10.5V7C17 6.45 16.55 6 16 6H4C3.45 6 3 6.45 3 7V17C3 17.55 3.45 18 4 18H16C16.55 18 17 17.55 17 17V13.5L21 17.5V6.5L17 10.5Z"
-                                          Fill="#FF8C00"/>
+                                    <!-- 仿微信视频号：橙色圆环 + 播放三角 -->
+                                    <Ellipse Canvas.Left="3" Canvas.Top="3" Width="18" Height="18" Stroke="#FA9D3B" StrokeThickness="2" Fill="Transparent"/>
+                                    <Path Data="M10.2 8.6V15.4L15.8 12Z" Fill="#FA9D3B"/>
                                 </Canvas>
                             </Viewbox>
                             <TextBlock Grid.Column="1" Text="视频号"
@@ -242,8 +246,8 @@
                         <Viewbox Grid.Column="0" Width="24" Height="24"
                                  HorizontalAlignment="Center" VerticalAlignment="Center">
                             <Canvas Width="24" Height="24">
-                                <Path Data="M16 11C17.66 11 18.99 9.66 18.99 8C18.99 6.34 17.66 5 16 5C14.34 5 13 6.34 13 8C13 9.66 14.34 11 16 11ZM8 11C9.66 11 10.99 9.66 10.99 8C10.99 6.34 9.66 5 8 5C6.34 5 5 6.34 5 8C5 9.66 6.34 11 8 11ZM8 13C5.67 13 1 14.17 1 16.5V19H15V16.5C15 14.17 10.33 13 8 13ZM16 13C15.71 13 15.38 13.02 15.03 13.05C16.19 13.89 17 15.02 17 16.5V19H23V16.5C23 14.17 18.33 13 16 13Z"
-                                      Fill="#3498DB"/>
+                                <Path Data="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.87 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9C9.5 7.62 10.62 6.5 12 6.5C13.38 6.5 14.5 7.62 14.5 9C14.5 10.38 13.38 11.5 12 11.5Z"
+                                      Fill="#4FA8EE"/>
                             </Canvas>
                         </Viewbox>
                         <TextBlock Grid.Column="1" Text="附近的人"
@@ -295,8 +299,9 @@
                             <Viewbox Grid.Column="0" Width="24" Height="24"
                                      HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <Canvas Width="24" Height="24">
-                                    <Path Data="M4 8H8V4H4V8ZM10 20H14V16H10V20ZM4 20H8V16H4V20ZM4 14H8V10H4V14ZM10 14H14V10H10V14ZM16 4V8H20V4H16ZM10 8H14V4H10V8ZM16 14H20V10H16V14ZM16 20H20V16H16V20Z"
-                                          Fill="#8E44AD"/>
+                                    <!-- 仿微信小程序：紫色圆环 + S 形转子 -->
+                                    <Ellipse Canvas.Left="3" Canvas.Top="3" Width="18" Height="18" Stroke="#6467F0" StrokeThickness="2" Fill="Transparent"/>
+                                    <Path Data="M12 5.9 A3.05 3.05 0 0 1 12 12 A3.05 3.05 0 0 0 12 18.1" Stroke="#6467F0" StrokeThickness="2" StrokeLineCap="Round" Fill="Transparent"/>
                                 </Canvas>
                             </Viewbox>
                             <TextBlock Grid.Column="1" Text="小程序"

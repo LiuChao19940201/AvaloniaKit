@@ -68,6 +68,34 @@ public partial class NeteasePlayerViewModel : ObservableObject
         }
     }
 
+    // ── ★ 封面兜底：入参未带封面 URL 时从 song/detail 补取 al.picUrl ──
+    private async Task LoadCoverFromDetailAsync(long songId, CancellationToken ct)
+    {
+        try
+        {
+            string url = "https://music.163.com/api/v3/song/detail?c=" +
+                         Uri.EscapeDataString($"[{{\"id\":{songId}}}]");
+            string raw = await _http.GetStringAsync(url, ct);
+            using var doc = JsonDocument.Parse(raw);
+
+            if (!doc.RootElement.TryGetProperty("songs", out var songs) ||
+                songs.ValueKind != JsonValueKind.Array)
+                return;
+
+            foreach (var s in songs.EnumerateArray())
+            {
+                string? pic = s.TryGetProperty("al", out var al) ? al.TryGetStr("picUrl") : null;
+                if (!string.IsNullOrEmpty(pic) && !ct.IsCancellationRequested)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() => CoverUrl = pic);
+                    await LoadCoverBitmapAsync(pic);
+                }
+                break;
+            }
+        }
+        catch { /* 取不到封面时保持黑胶空盘占位 */ }
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PlayBtnIcon))]
     private bool _isPlaying = false;
@@ -156,6 +184,16 @@ public partial class NeteasePlayerViewModel : ObservableObject
     public void OnNavigatedTo(long songId, string songName, string artist,
                                string album, string coverUrl)
     {
+        // ★ 同一首歌重复进入（如返回列表后再次点击当前曲目）：无缝续播，
+        //   不重新加载、不清进度，只重新挂上离开时退订的音频事件
+        if (songId == SongId && Audio != null && (IsPlaying || DurationMs > 0))
+        {
+            UnsubscribeAudio();   // 防重复订阅
+            SubscribeAudio();
+            IsPlaying = Audio.IsPlaying;   // ★ 用户可能在迷你栏暂停/恢复过，同步真实状态
+            return;
+        }
+
         _loadCts?.Cancel();
         _loadCts = new CancellationTokenSource();
 
@@ -185,7 +223,11 @@ public partial class NeteasePlayerViewModel : ObservableObject
 
         _ = LoadLyricAsync(songId, _loadCts.Token);
         _ = LoadAndPlayAsync(songId, _loadCts.Token);
-        _ = LoadCoverBitmapAsync(coverUrl);
+        // ★ 搜索/离线数据可能缺封面：没带 URL 时从歌曲详情补取
+        if (!string.IsNullOrEmpty(coverUrl))
+            _ = LoadCoverBitmapAsync(coverUrl);
+        else
+            _ = LoadCoverFromDetailAsync(songId, _loadCts.Token);
     }
 
     public void OnNavigatedAway()

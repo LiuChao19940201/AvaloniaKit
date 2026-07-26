@@ -149,7 +149,7 @@
 								   TextTrimming="CharacterEllipsis"/>
 					</StackPanel>
 					<Button Grid.Column="2" Classes="icon-btn"
-							Command="{Binding OpenPlayerCommand}"
+							Command="{Binding TogglePlayCommand}"
 							VerticalAlignment="Center">
 						<Viewbox Width="24" Height="24">
 							<Canvas Width="24" Height="24">
