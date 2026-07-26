@@ -14,7 +14,7 @@ public partial class ChatViewModel : ObservableObject
         // ★ 天气预报入口（排在基金上方）
         new() { Name = "基金自选跟踪", Preview = "点击查看自选基金实时净值", Time = "昨天",  Unread = 0, IsFundTracker = true  },
         new() { Name = "网易云音乐",   Preview = "私人漫游 · 推荐、排行、搜索", Time = "昨天", Unread = 0, IsNetease = true },
-        new() { Name = "天气预报", Preview = "武汉 10° 雾 · 点击查看实时天气", Time = "昨天", Unread = 0, IsWeather = true },
+        new() { Name = "天气预报", Preview = "实时天气 · 24小时与7日预报 · 多城市", Time = "昨天", Unread = 0, IsWeather = true },
         new() { Name = "文件传输助手", Preview = "欢迎使用微信",             Time = "昨天",  Unread = 0  },
         new() { Name = "张三",         Preview = "好的，明天见",             Time = "10:32", Unread = 2  },
         new() { Name = "产品讨论群",   Preview = "李四：下周评审",           Time = "09:15", Unread = 5  },

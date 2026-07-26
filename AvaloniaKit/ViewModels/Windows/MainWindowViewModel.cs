@@ -197,6 +197,8 @@ public partial class MainWindowViewModel : ObservableObject,
 
     public void Receive(NavigateToWeatherMessage message)
     {
+        // ★ 数据超过 10 分钟自动刷新
+        _weatherVm.OnNavigatedTo();
         CurrentPage = _weatherVm;
     }
 

@@ -2,51 +2,16 @@
 			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="clr-namespace:AvaloniaKit.ViewModels.UserControls.Chat"
-             x:Class="AvaloniaKit.Views.UserControls.Chat.WeatherUserControl"
+			 xmlns:vm="clr-namespace:AvaloniaKit.ViewModels.UserControls.Chat"
+			 x:Class="AvaloniaKit.Views.UserControls.Chat.WeatherUserControl"
 			 d:DesignWidth="390" d:DesignHeight="760"
-             x:DataType="vm:WeatherViewModel">
+			 x:DataType="vm:WeatherViewModel">
 
-    <Design.DataContext>
-        <vm:WeatherViewModel/>
-    </Design.DataContext>
+	<Design.DataContext>
+		<vm:WeatherViewModel/>
+	</Design.DataContext>
 
-    <UserControl.Styles>
-		<Style Selector="Button.tab-btn">
-			<Setter Property="Background"      Value="Transparent"/>
-			<Setter Property="Foreground"      Value="{DynamicResource SemiColorText2}"/>
-			<Setter Property="FontSize"        Value="15"/>
-			<Setter Property="Padding"         Value="0,10"/>
-			<Setter Property="BorderThickness" Value="0"/>
-			<Setter Property="HorizontalContentAlignment" Value="Center"/>
-		</Style>
-		<Style Selector="Button.tab-btn.active">
-			<Setter Property="Foreground" Value="#E05C5C"/>
-			<Setter Property="FontWeight" Value="SemiBold"/>
-		</Style>
-		<Style Selector="Button.tab-btn:pointerover /template/ ContentPresenter">
-			<Setter Property="Background" Value="Transparent"/>
-		</Style>
-		<Style Selector="Button.rank-btn">
-			<Setter Property="Background"      Value="{DynamicResource SemiColorFillQuaternary}"/>
-			<Setter Property="Foreground"      Value="{DynamicResource SemiColorText1}"/>
-			<Setter Property="FontSize"        Value="12"/>
-			<Setter Property="Padding"         Value="14,5"/>
-			<Setter Property="CornerRadius"    Value="14"/>
-			<Setter Property="BorderThickness" Value="0"/>
-			<Setter Property="MinHeight"       Value="0"/>
-		</Style>
-		<Style Selector="Button.rank-btn.active">
-			<Setter Property="Background" Value="#E05C5C"/>
-			<Setter Property="Foreground" Value="White"/>
-			<Setter Property="FontWeight" Value="SemiBold"/>
-		</Style>
-		<Style Selector="Button.rank-btn:pointerover /template/ ContentPresenter">
-			<Setter Property="Background" Value="{DynamicResource SemiColorFillTertiary}"/>
-		</Style>
-		<Style Selector="Button.rank-btn.active:pointerover /template/ ContentPresenter">
-			<Setter Property="Background" Value="#E05C5C"/>
-		</Style>
+	<UserControl.Styles>
 		<Style Selector="Button.icon-btn">
 			<Setter Property="Background"      Value="Transparent"/>
 			<Setter Property="Padding"         Value="8"/>
@@ -55,97 +20,301 @@
 		<Style Selector="Button.icon-btn:pointerover /template/ ContentPresenter">
 			<Setter Property="Background" Value="Transparent"/>
 		</Style>
-		<!-- 封面缩略图统一样式 -->
-		<Style Selector="Border.cover-thumb">
-			<Setter Property="Width"        Value="44"/>
-			<Setter Property="Height"       Value="44"/>
-			<Setter Property="CornerRadius" Value="6"/>
-			<Setter Property="ClipToBounds" Value="True"/>
-			<Setter Property="Background"   Value="{DynamicResource SemiColorFillTertiary}"/>
-			<Setter Property="VerticalAlignment" Value="Center"/>
+		<!-- 信息小胶囊（体感/湿度/风力） -->
+		<Style Selector="Border.chip">
+			<Setter Property="Background"   Value="#26FFFFFF"/>
+			<Setter Property="CornerRadius" Value="14"/>
+			<Setter Property="Padding"      Value="12,6"/>
+		</Style>
+		<!-- 半透明信息卡片 -->
+		<Style Selector="Border.w-card">
+			<Setter Property="Background"   Value="#21FFFFFF"/>
+			<Setter Property="CornerRadius" Value="16"/>
+			<Setter Property="Padding"      Value="16,14"/>
+		</Style>
+		<!-- 城市选择按钮 -->
+		<Style Selector="Button.city-btn">
+			<Setter Property="Background"      Value="{DynamicResource SemiColorFillQuaternary}"/>
+			<Setter Property="Foreground"      Value="{DynamicResource SemiColorText0}"/>
+			<Setter Property="FontSize"        Value="13"/>
+			<Setter Property="Padding"         Value="16,8"/>
+			<Setter Property="CornerRadius"    Value="18"/>
+			<Setter Property="BorderBrush"     Value="{DynamicResource SemiColorBorder}"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="MinHeight"       Value="0"/>
+			<Setter Property="Margin"          Value="0,0,10,10"/>
+		</Style>
+		<Style Selector="Button.city-btn:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="{DynamicResource SemiColorFillTertiary}"/>
+		</Style>
+
+		<!-- ★ 城市弹层：遮罩淡入 + 底部面板上滑（微信风格动效） -->
+		<Style Selector="Border#CityScrim">
+			<Setter Property="Opacity" Value="0"/>
+			<Setter Property="Transitions">
+				<Transitions>
+					<DoubleTransition Property="Opacity" Duration="0:0:0.22"/>
+				</Transitions>
+			</Setter>
+		</Style>
+		<Style Selector="Border#CityScrim.open">
+			<Setter Property="Opacity" Value="1"/>
+		</Style>
+		<Style Selector="Border#CitySheet">
+			<Setter Property="RenderTransform" Value="translateY(520px)"/>
+			<Setter Property="Transitions">
+				<Transitions>
+					<TransformOperationsTransition Property="RenderTransform"
+					                               Duration="0:0:0.28"
+					                               Easing="CubicEaseOut"/>
+				</Transitions>
+			</Setter>
+		</Style>
+		<Style Selector="Border#CitySheet.open">
+			<Setter Property="RenderTransform" Value="translateY(0px)"/>
 		</Style>
 	</UserControl.Styles>
 
-    <!-- 使用 DockPanel 以便添加顶部导航栏 -->
-    <DockPanel Background="{DynamicResource SemiColorBg1}">
-        <!-- 顶部导航（返回按钮） -->
-        <Border DockPanel.Dock="Top"
-                Background="{DynamicResource SemiColorBg0}"
-                BorderBrush="{DynamicResource SemiColorBorder}"
-                BorderThickness="0,0,0,0.8"
-                Padding="4,8">
-            <Grid ColumnDefinitions="44,*,44">
-                <Button Grid.Column="0" Classes="icon-btn"
-                        Command="{Binding GoBackCommand}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Viewbox Width="20" Height="20">
-                        <Canvas Width="24" Height="24">
-                            <Path Data="M20 11H7.83L13.42 5.41 12 4 4 12 12 20 13.41 18.59 7.83 13H20V11Z"
-                                  Fill="{DynamicResource SemiColorText0}"/>
-                        </Canvas>
-                    </Viewbox>
-                </Button>
-                <!-- 中间占位（可显示标题或留空） -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal"
-                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <!-- 右侧留空以平衡布局 -->
-                <Panel Grid.Column="2"/>
-            </Grid>
-        </Border>
+	<!-- 根网格：背景渐变由 code-behind 根据天气/昼夜动态设置 -->
+	<Grid Name="RootGrid" Background="#FF2F80CE">
 
-        <!-- 主内容 -->
-        <Grid>
-            <!-- 主内容 -->
-            <StackPanel Margin="20" Spacing="15">
+		<!-- ★ 动效粒子层（晴/雨/雪/云/雷，code-behind 驱动） -->
+		<Canvas Name="FxCanvas" IsHitTestVisible="False" ClipToBounds="True"/>
 
-                <!-- 标题 -->
-                <TextBlock Text="🌤 实时天气"
-                           FontSize="22"
-                           FontWeight="Bold"
-                            Foreground="{DynamicResource SemiColorText2}"/>
+		<!-- ★ 雷暴闪电闪屏层 -->
+		<Border Name="FlashLayer" Background="White" Opacity="0" IsHitTestVisible="False"/>
 
-                <!-- 天气卡片 -->
-                <Border CornerRadius="15"
-                        Padding="20" Background="{DynamicResource SemiColorBg0}">
+		<DockPanel>
+			<!-- ══ 顶部导航 ══ -->
+			<Grid DockPanel.Dock="Top" ColumnDefinitions="44,*,44" Margin="4,10,4,0">
+				<Button Grid.Column="0" Classes="icon-btn"
+						Command="{Binding GoBackCommand}"
+						HorizontalAlignment="Center" VerticalAlignment="Center">
+					<Viewbox Width="20" Height="20">
+						<Canvas Width="24" Height="24">
+							<Path Data="M20 11H7.83L13.42 5.41 12 4 4 12 12 20 13.41 18.59 7.83 13H20V11Z"
+								  Fill="White"/>
+						</Canvas>
+					</Viewbox>
+				</Button>
 
-                    <StackPanel Spacing="10">
+				<!-- 城市名（点击弹出城市选择） -->
+				<Button Grid.Column="1" Classes="icon-btn"
+						Command="{Binding ToggleCityPanelCommand}"
+						HorizontalAlignment="Center" VerticalAlignment="Center">
+					<StackPanel Orientation="Horizontal" Spacing="4">
+						<Viewbox Width="16" Height="16" VerticalAlignment="Center">
+							<Canvas Width="24" Height="24">
+								<Path Data="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22S19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5Z"
+									  Fill="White"/>
+							</Canvas>
+						</Viewbox>
+						<TextBlock Text="{Binding CityName}" FontSize="17" FontWeight="SemiBold"
+								   Foreground="White" VerticalAlignment="Center"/>
+						<TextBlock Text="▾" FontSize="13" Foreground="#CCFFFFFF"
+								   VerticalAlignment="Center"/>
+					</StackPanel>
+				</Button>
 
-                        <!-- 城市 + 日期 -->
-                        <TextBlock Text="{Binding DateInfo}"
-                                   FontSize="16"
-                                    Foreground="{DynamicResource SemiColorText2}"
-                                   Opacity="0.9"/>
+				<Button Grid.Column="2" Classes="icon-btn"
+						Command="{Binding RefreshCommand}"
+						IsEnabled="{Binding !IsLoading}"
+						HorizontalAlignment="Center" VerticalAlignment="Center">
+					<Viewbox Width="20" Height="20">
+						<Canvas Width="24" Height="24">
+							<Path Data="M17.65 6.35C16.2 4.9 14.21 4 12 4C7.58 4 4.01 7.58 4.01 12S7.58 20 12 20C15.73 20 18.84 17.45 19.73 14H17.65C16.83 16.33 14.61 18 12 18C8.69 18 6 15.31 6 12S8.69 6 12 6C13.66 6 15.14 6.69 16.22 7.78L13 11H20V4L17.65 6.35Z"
+								  Fill="White"/>
+						</Canvas>
+					</Viewbox>
+				</Button>
+			</Grid>
 
-                        <!-- 天气 -->
-                        <TextBlock Text="{Binding WeatherInfo}"
-                                   FontSize="20"
-                                   FontWeight="Bold"
-                                    Foreground="{DynamicResource SemiColorText2}"/>
+			<!-- ══ 主内容 ══ -->
+			<ScrollViewer VerticalScrollBarVisibility="Auto">
+				<StackPanel Margin="20,10,20,28" Spacing="16">
 
-                        <!-- 温度 -->
-                        <TextBlock Text="{Binding Temp}"
-                                   FontSize="40"
-                                   FontWeight="Bold"
-                                    Foreground="{DynamicResource SemiColorText2}"/>
+					<!-- 当前天气总览 -->
+					<StackPanel HorizontalAlignment="Center" Spacing="4" Margin="0,14,0,0">
+						<StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+							<TextBlock Text="{Binding WeatherEmoji}" FontSize="26"
+									   VerticalAlignment="Center"/>
+							<TextBlock Text="{Binding WeatherDesc}" FontSize="20"
+									   Foreground="White" FontWeight="SemiBold"
+									   VerticalAlignment="Center"/>
+						</StackPanel>
 
-                        <!-- 额外信息 -->
-                        <TextBlock Text="{Binding ExtraInfo}"
-                                   FontSize="14"
-                                    Foreground="{DynamicResource SemiColorText2}"
-                                   Opacity="0.85"/>
+						<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+							<TextBlock Text="{Binding CurrentTemp}" FontSize="86"
+									   FontWeight="Light" Foreground="White"/>
+							<TextBlock Text="°" FontSize="48" Foreground="#CCFFFFFF"
+									   Margin="0,10,0,0"/>
+						</StackPanel>
 
-                    </StackPanel>
-                </Border>
+						<TextBlock Text="{Binding TodayRange}" FontSize="14"
+								   Foreground="#CCFFFFFF" HorizontalAlignment="Center"/>
 
-                <!-- 刷新按钮 -->
-                <Button Content="🔄 刷新天气"
-                        HorizontalAlignment="Center"
-                        Command="{Binding RefreshCommand}"
-                        Classes="rank-btn"
-                        CornerRadius="20"
-                        Padding="10,5"/>
+						<!-- 体感 / 湿度 / 风力 -->
+						<StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+									Spacing="8" Margin="0,10,0,0">
+							<Border Classes="chip">
+								<TextBlock Text="{Binding FeelsLike}" FontSize="12" Foreground="White"/>
+							</Border>
+							<Border Classes="chip">
+								<TextBlock Text="{Binding Humidity}" FontSize="12" Foreground="White"/>
+							</Border>
+							<Border Classes="chip">
+								<TextBlock Text="{Binding WindInfo}" FontSize="12" Foreground="White"/>
+							</Border>
+						</StackPanel>
+					</StackPanel>
 
-            </StackPanel>
-        </Grid>
-    </DockPanel>
+					<!-- 加载 / 错误提示 -->
+					<TextBlock Text="加载中…" IsVisible="{Binding IsLoading}"
+							   FontSize="13" Foreground="#CCFFFFFF"
+							   HorizontalAlignment="Center"/>
+					<TextBlock Text="{Binding StatusText}"
+							   IsVisible="{Binding StatusText.Length}"
+							   FontSize="13" Foreground="#FFE0A0"
+							   HorizontalAlignment="Center" TextWrapping="Wrap"/>
+
+					<!-- 24 小时预报 -->
+					<Border Classes="w-card">
+						<StackPanel Spacing="10">
+							<TextBlock Text="24小时预报" FontSize="13"
+									   Foreground="#CCFFFFFF" FontWeight="SemiBold"/>
+							<ScrollViewer HorizontalScrollBarVisibility="Hidden"
+										  VerticalScrollBarVisibility="Disabled">
+								<ItemsControl ItemsSource="{Binding HourlyItems}">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate>
+											<StackPanel Orientation="Horizontal" Spacing="20"/>
+										</ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate x:DataType="vm:WeatherHourItem">
+											<StackPanel Spacing="7" HorizontalAlignment="Center">
+												<TextBlock Text="{Binding TimeText}" FontSize="12"
+														   Foreground="#B3FFFFFF"
+														   HorizontalAlignment="Center"/>
+												<TextBlock Text="{Binding Emoji}" FontSize="20"
+														   HorizontalAlignment="Center"/>
+												<TextBlock Text="{Binding TempText}" FontSize="14"
+														   Foreground="White" FontWeight="SemiBold"
+														   HorizontalAlignment="Center"/>
+											</StackPanel>
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+								</ItemsControl>
+							</ScrollViewer>
+						</StackPanel>
+					</Border>
+
+					<!-- 7 日预报 -->
+					<Border Classes="w-card">
+						<StackPanel Spacing="2">
+							<TextBlock Text="7日预报" FontSize="13"
+									   Foreground="#CCFFFFFF" FontWeight="SemiBold"
+									   Margin="0,0,0,8"/>
+							<ItemsControl ItemsSource="{Binding DailyItems}">
+								<ItemsControl.ItemTemplate>
+									<DataTemplate x:DataType="vm:WeatherDayItem">
+										<StackPanel>
+											<Grid ColumnDefinitions="64,36,*,Auto" MinHeight="44">
+												<StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
+													<TextBlock Text="{Binding DayText}" FontSize="14"
+															   Foreground="White"/>
+													<TextBlock Text="{Binding DateText}" FontSize="11"
+															   Foreground="#80FFFFFF"/>
+												</StackPanel>
+												<TextBlock Grid.Column="1" Text="{Binding Emoji}" FontSize="19"
+														   VerticalAlignment="Center"/>
+												<StackPanel Grid.Column="2" Orientation="Horizontal"
+															Spacing="8" VerticalAlignment="Center">
+													<TextBlock Text="{Binding Desc}" FontSize="13"
+															   Foreground="#CCFFFFFF"/>
+													<TextBlock Text="{Binding RainProb}" FontSize="12"
+															   Foreground="#8FD3FF"
+															   IsVisible="{Binding RainProb.Length}"/>
+												</StackPanel>
+												<TextBlock Grid.Column="3" Text="{Binding TempRange}" FontSize="13"
+														   Foreground="White" VerticalAlignment="Center"/>
+											</Grid>
+											<Rectangle Height="0.5" Fill="#22FFFFFF"/>
+										</StackPanel>
+									</DataTemplate>
+								</ItemsControl.ItemTemplate>
+							</ItemsControl>
+						</StackPanel>
+					</Border>
+
+					<!-- 更新时间 + 数据来源 -->
+					<StackPanel Spacing="2">
+						<TextBlock Text="{Binding UpdateTime}" FontSize="11"
+								   Foreground="#80FFFFFF" HorizontalAlignment="Center"/>
+						<TextBlock Text="数据来源：Open-Meteo" FontSize="11"
+								   Foreground="#59FFFFFF" HorizontalAlignment="Center"/>
+					</StackPanel>
+				</StackPanel>
+			</ScrollViewer>
+		</DockPanel>
+
+		<!-- ══ 城市选择底部弹层（常驻可视树，用 open 类驱动遮罩淡入/面板上滑）══ -->
+		<Panel Name="CityLayer" ClipToBounds="True"
+			   IsHitTestVisible="{Binding IsCityPanelOpen}">
+			<!-- 深色遮罩：点击关闭（code-behind 处理） -->
+			<Border Name="CityScrim"
+					Classes.open="{Binding IsCityPanelOpen}"
+					Background="#A8000000"/>
+			<!-- 底部面板：圆角 + 阴影 + 拖拉把手，与背景页面明确分层 -->
+			<Border Name="CitySheet"
+					Classes.open="{Binding IsCityPanelOpen}"
+					VerticalAlignment="Bottom"
+					Background="{DynamicResource SemiColorBg0}"
+					CornerRadius="20,20,0,0"
+					BoxShadow="0 -8 28 0 #66000000"
+					Padding="20,10,20,26">
+				<StackPanel Spacing="12">
+					<!-- 拖拉把手 -->
+					<Border Width="36" Height="4" CornerRadius="2"
+							Background="{DynamicResource SemiColorFillTertiary}"
+							HorizontalAlignment="Center"/>
+					<Grid ColumnDefinitions="*,Auto">
+						<StackPanel Spacing="2">
+							<TextBlock Text="选择城市" FontSize="17" FontWeight="SemiBold"
+									   Foreground="{DynamicResource SemiColorText0}"/>
+							<TextBlock Text="切换后自动刷新实时天气与预报" FontSize="12"
+									   Foreground="{DynamicResource SemiColorText2}"/>
+						</StackPanel>
+						<Button Grid.Column="1" Classes="icon-btn"
+								VerticalAlignment="Top"
+								Command="{Binding ToggleCityPanelCommand}">
+							<Border Width="26" Height="26" CornerRadius="13"
+									Background="{DynamicResource SemiColorFillQuaternary}">
+								<TextBlock Text="✕" FontSize="12"
+										   HorizontalAlignment="Center" VerticalAlignment="Center"
+										   Foreground="{DynamicResource SemiColorText2}"/>
+							</Border>
+						</Button>
+					</Grid>
+					<ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+						<ItemsControl ItemsSource="{Binding Cities}" Margin="0,4,0,0">
+							<ItemsControl.ItemsPanel>
+								<ItemsPanelTemplate>
+									<WrapPanel/>
+								</ItemsPanelTemplate>
+							</ItemsControl.ItemsPanel>
+							<ItemsControl.ItemTemplate>
+								<DataTemplate x:DataType="vm:WeatherCity">
+									<Button Classes="city-btn"
+											Content="{Binding Name}"
+											Command="{Binding $parent[ItemsControl].((vm:WeatherViewModel)DataContext).SelectCityCommand}"
+											CommandParameter="{Binding}"/>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>
+					</ScrollViewer>
+				</StackPanel>
+			</Border>
+		</Panel>
+	</Grid>
 </UserControl>
