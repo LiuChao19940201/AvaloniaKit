@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -32,6 +33,9 @@ public partial class NeteasePlayerUserControl : UserControl
     private CancellationTokenSource? _scrollCts;
     private DateTime _userScrollUntil = DateTime.MinValue;
 
+    // ★ 进度条拖动中标志（拖动中预览时间，松手才 Seek）
+    private bool _sliderDragging;
+
     public NeteasePlayerUserControl()
     {
         InitializeComponent();
@@ -56,11 +60,17 @@ public partial class NeteasePlayerUserControl : UserControl
         LyricScroll.AddHandler(PointerWheelChangedEvent, OnLyricPointerActivity,
             RoutingStrategies.Tunnel, handledEventsToo: true);
 
-        // 进度条松手后 Seek
+        // ★ 点击歌词行→跳转到对应时间播放（先于 CenterPanel 的切换视图）
+        LyricItems.AddHandler(Gestures.TappedEvent, OnLyricTapped);
+
+        // 进度条：按下进入拖动态（拖动中时间实时预览），松手后才 Seek
+        ProgressSlider.AddHandler(PointerPressedEvent, OnSliderPressed,
+            RoutingStrategies.Tunnel, handledEventsToo: true);
         ProgressSlider.AddHandler(PointerReleasedEvent, OnSliderReleased,
             RoutingStrategies.Tunnel, handledEventsToo: true);
         ProgressSlider.AddHandler(PointerCaptureLostEvent, OnSliderCaptureLost,
             RoutingStrategies.Direct, handledEventsToo: true);
+        ProgressSlider.PropertyChanged += OnSliderPropertyChanged;
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -181,6 +191,30 @@ public partial class NeteasePlayerUserControl : UserControl
     private void OnCenterTapped(object? sender, TappedEventArgs e)
         => _vm?.ToggleViewCommand.Execute(null);
 
+    // ★ 点击歌词行：跳转播放并阻止冒泡到 CenterPanel（避免误切回封面视图）
+    private void OnLyricTapped(object? sender, TappedEventArgs e)
+    {
+        if ((e.Source as StyledElement)?.DataContext is LyricLine line)
+        {
+            _vm?.SeekToLyricCommand.Execute(line);
+            _userScrollUntil = DateTime.MinValue;   // 立刻恢复自动居中
+            e.Handled = true;
+        }
+    }
+
+    // ── 进度条拖动：按下进入拖动态，拖动中预览时间，松手 Seek ────────
+    private void OnSliderPressed(object? sender, PointerPressedEventArgs e)
+    {
+        _sliderDragging = true;
+        _vm?.BeginSeekDrag();
+    }
+
+    private void OnSliderPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (_sliderDragging && e.Property == RangeBase.ValueProperty)
+            _vm?.PreviewSeek(ProgressSlider.Value);
+    }
+
     private void OnSliderReleased(object? sender, PointerReleasedEventArgs e)
         => SeekToSlider();
 
@@ -188,5 +222,9 @@ public partial class NeteasePlayerUserControl : UserControl
         => SeekToSlider();
 
     private void SeekToSlider()
-        => _vm?.SeekProgressCommand.Execute(ProgressSlider.Value);
+    {
+        if (!_sliderDragging) return;
+        _sliderDragging = false;
+        _vm?.SeekProgressCommand.Execute(ProgressSlider.Value);
+    }
 }

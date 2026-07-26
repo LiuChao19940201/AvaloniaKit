@@ -117,8 +117,9 @@
 			</Grid>
 		</Border>
 
-		<!-- ══ Row 2: 页面内容区 ══ -->
+		<!-- ══ Row 2: 页面内容区（PageHost 支持右缘左滑返回，见 code-behind）══ -->
 		<ContentControl Grid.Row="2"
+						Name="PageHost"
 						Content="{Binding CurrentPage}"
 						HorizontalContentAlignment="Stretch"
 						VerticalContentAlignment="Stretch" />

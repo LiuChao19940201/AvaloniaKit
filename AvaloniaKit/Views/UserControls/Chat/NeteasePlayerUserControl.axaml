@@ -276,9 +276,16 @@
                         </Canvas>
                     </Panel>
 
-                    <!-- 专辑 / 音质信息 -->
+                    <!-- 当前歌词单行 + 专辑 / 音质信息 -->
                     <StackPanel Grid.Row="1" HorizontalAlignment="Center" Spacing="6"
                                 Margin="0,18,0,14">
+                        <!-- ★ 仿网易云：封面视图底部同步显示当前唱到的那句词 -->
+                        <TextBlock Text="{Binding CurrentLyricText}"
+                                   IsVisible="{Binding CurrentLyricText.Length}"
+                                   FontSize="14" Foreground="#CCFFFFFF"
+                                   HorizontalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="300"/>
                         <TextBlock Text="{Binding Album}"
                                    FontSize="13" Foreground="#99FFFFFF"
                                    HorizontalAlignment="Center"

@@ -104,6 +104,38 @@ public partial class MainWindowViewModel : ObservableObject,
                                         and not GameBoxesViewModel
                                         and not WeatherViewModel;
 
+    // ── ★ 全局边缘滑动返回：子页面统一返回入口 ──────────────────────────────
+    // 复用各子页 VM 自己的 GoBackCommand（保留其内部清理逻辑，如游戏停表、音频退订）
+    public bool CanGoBack => CurrentPage is ServiceViewModel
+                                         or FundTrackerViewModel
+                                         or FundChartViewModel
+                                         or NeteaseViewModel
+                                         or NeteasePlayerViewModel
+                                         or WeatherViewModel
+                                         or TetrisViewModel
+                                         or SnakeViewModel
+                                         or GameBoxesViewModel;
+
+    public bool TryGoBackFromSubPage()
+    {
+        System.Windows.Input.ICommand? back = CurrentPage switch
+        {
+            ServiceViewModel vm => vm.GoBackCommand,
+            FundTrackerViewModel vm => vm.GoBackCommand,
+            FundChartViewModel vm => vm.GoBackCommand,
+            NeteaseViewModel vm => vm.GoBackCommand,
+            NeteasePlayerViewModel vm => vm.GoBackCommand,
+            WeatherViewModel vm => vm.GoBackCommand,
+            TetrisViewModel vm => vm.GoBackCommand,
+            SnakeViewModel vm => vm.GoBackCommand,
+            GameBoxesViewModel vm => vm.GoBackCommand,
+            _ => null,
+        };
+        if (back is null) return false;
+        back.Execute(null);
+        return true;
+    }
+
     [RelayCommand] private void SwitchToChat() => CurrentPage = _chatVm;
     [RelayCommand] private void SwitchToContacts() => CurrentPage = _contactsVm;
     [RelayCommand] private void SwitchToDiscover() => CurrentPage = _discoverVm;

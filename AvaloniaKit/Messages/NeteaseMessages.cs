@@ -64,4 +64,8 @@ public class NeteasePlayPrevMessage { }
 /// 发送方：NeteasePlayerViewModel.NextSong() / OnPlaybackEnded()
 /// 接收方：NeteaseViewModel → 计算下一首索引并导航到对应歌曲
 /// </summary>
-public class NeteasePlayNextMessage { }
+public class NeteasePlayNextMessage
+{
+    /// <summary>★ 播放器处于随机模式时为 true，列表应随机选曲而非顺序下一首</summary>
+    public bool Random { get; init; }
+}

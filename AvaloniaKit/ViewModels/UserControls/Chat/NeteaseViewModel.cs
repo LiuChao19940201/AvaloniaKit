@@ -166,7 +166,29 @@ public partial class NeteaseViewModel : ObservableObject,
 
     // ── ★ 上/下一曲消息处理 ───────────────────────────────────────────────────
     public void Receive(NeteasePlayPrevMessage message) => PlayOffset(-1);
-    public void Receive(NeteasePlayNextMessage message) => PlayOffset(+1);
+    public void Receive(NeteasePlayNextMessage message)
+    {
+        // ★ 随机模式：从当前列表随机选一首（尽量避开当前曲目）
+        if (message.Random) PlayRandom();
+        else PlayOffset(+1);
+    }
+
+    private void PlayRandom()
+    {
+        var list = _activeList;
+        if (list == null || list.Count == 0) return;
+
+        int newIndex = _activeIndex;
+        if (list.Count > 1)
+            while (newIndex == _activeIndex)
+                newIndex = Random.Shared.Next(list.Count);
+
+        _activeIndex = newIndex;
+        var item = list[newIndex];
+        CurrentSong = item;
+        IsPlaying = true;
+        SendNavigateToPlayer(item);
+    }
 
     private void PlayOffset(int offset)
     {

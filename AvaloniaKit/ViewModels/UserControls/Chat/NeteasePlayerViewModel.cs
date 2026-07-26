@@ -122,6 +122,19 @@ public partial class NeteasePlayerViewModel : ObservableObject
 
     private CancellationTokenSource? _loadCts;
 
+    // ★ 拖动进度条期间为 true：播放回调不再覆盖滑块位置与时间显示，避免滑块回跳
+    private bool _isSeekDragging;
+
+    /// <summary>进度条按下，开始拖动（view code-behind 调用）</summary>
+    public void BeginSeekDrag() => _isSeekDragging = true;
+
+    /// <summary>拖动过程中实时预览目标时间（view code-behind 调用）</summary>
+    public void PreviewSeek(double percent)
+    {
+        if (DurationMs <= 0) return;
+        CurrentTimeStr = FormatTime((long)(DurationMs * percent / 100.0));
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     public void OnNavigatedTo(long songId, string songName, string artist,
                                string album, string coverUrl)
@@ -316,7 +329,7 @@ public partial class NeteasePlayerViewModel : ObservableObject
         {
             CurrentMs = e.CurrentMs;
             DurationMs = e.DurationMs;
-            if (DurationMs > 0)
+            if (DurationMs > 0 && !_isSeekDragging)   // ★ 拖动中不覆盖滑块/时间
             {
                 ProgressValue = CurrentMs * 100.0 / DurationMs;
                 CurrentTimeStr = FormatTime(CurrentMs);
@@ -345,7 +358,9 @@ public partial class NeteasePlayerViewModel : ObservableObject
             else
             {
                 StatusText = "播放完毕";
-                WeakReferenceMessenger.Default.Send(new NeteasePlayNextMessage());
+                // ★ 随机模式下通知列表随机选曲
+                WeakReferenceMessenger.Default.Send(
+                    new NeteasePlayNextMessage { Random = RepeatMode == 2 });
             }
         });
     }
@@ -392,7 +407,8 @@ public partial class NeteasePlayerViewModel : ObservableObject
 
     [RelayCommand]
     private void NextSong()
-        => WeakReferenceMessenger.Default.Send(new NeteasePlayNextMessage());
+        => WeakReferenceMessenger.Default.Send(
+            new NeteasePlayNextMessage { Random = RepeatMode == 2 });
 
     [RelayCommand] private void ToggleView() => IsLyricView = !IsLyricView;
     [RelayCommand] private void ToggleLike() => IsLiked = !IsLiked;
@@ -401,8 +417,31 @@ public partial class NeteasePlayerViewModel : ObservableObject
     [RelayCommand]
     private void SeekProgress(double percent)
     {
+        _isSeekDragging = false;
         if (DurationMs <= 0 || Audio == null) return;
-        Audio.SeekTo((long)(DurationMs * percent / 100.0));
+        long target = (long)(DurationMs * percent / 100.0);
+        Audio.SeekTo(target);
+        // ★ 立即同步本地状态，不等下一次进度回调，手感更跟手
+        CurrentMs = target;
+        CurrentTimeStr = FormatTime(target);
+        UpdateLyricHighlight();
+    }
+
+    /// <summary>★ 点击歌词行跳转到对应时间播放（仿网易云；暂停中则顺带续播）</summary>
+    [RelayCommand]
+    private void SeekToLyric(LyricLine? line)
+    {
+        if (line is null || Audio == null || DurationMs <= 0) return;
+        Audio.SeekTo(line.TimeMs);
+        CurrentMs = line.TimeMs;
+        CurrentTimeStr = FormatTime(line.TimeMs);
+        ProgressValue = line.TimeMs * 100.0 / DurationMs;
+        UpdateLyricHighlight();
+        if (!IsPlaying)
+        {
+            Audio.Resume();
+            IsPlaying = Audio.IsPlaying;
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════
