@@ -58,6 +58,7 @@ namespace AvaloniaKit.Android
             ServiceLocator.DeviceService      = new AndroidDeviceService(this);
             ServiceLocator.ImagePickerService = new AndroidImagePickerService(this);
             ServiceLocator.AudioService       = new AndroidAudioService();
+            ServiceLocator.DouyinService      = new AndroidDouyinService(this);
 
             base.OnCreate(savedInstanceState);
 

@@ -15,6 +15,7 @@ public partial class ChatViewModel : ObservableObject
         new() { Name = "基金自选跟踪", Preview = "点击查看自选基金实时净值", Time = "昨天",  Unread = 0, IsFundTracker = true  },
         new() { Name = "网易云音乐",   Preview = "私人漫游 · 推荐、排行、搜索", Time = "昨天", Unread = 0, IsNetease = true },
         new() { Name = "天气预报", Preview = "实时天气 · 24小时与7日预报 · 多城市", Time = "昨天", Unread = 0, IsWeather = true },
+        new() { Name = "抖音", Preview = "刷短视频 · 上下滑切换 · 双击点赞", Time = "昨天", Unread = 0, IsDouyin = true },
         new() { Name = "文件传输助手", Preview = "欢迎使用微信",             Time = "昨天",  Unread = 0  },
         new() { Name = "张三",         Preview = "好的，明天见",             Time = "10:32", Unread = 2  },
         new() { Name = "产品讨论群",   Preview = "李四：下周评审",           Time = "09:15", Unread = 5  },
@@ -27,6 +28,8 @@ public partial class ChatViewModel : ObservableObject
     {
         if (item.IsWeather)
             WeakReferenceMessenger.Default.Send(new NavigateToWeatherMessage());
+        else if (item.IsDouyin)
+            WeakReferenceMessenger.Default.Send(new NavigateToDouyinMessage());
         else if (item.IsFundTracker)
             WeakReferenceMessenger.Default.Send(new NavigateToFundTrackerMessage());
         else if (item.IsNetease)
@@ -50,9 +53,10 @@ public partial class ChatItemViewModel : ObservableObject
     public bool IsWeather { get; init; } = false;
     public bool IsFundTracker { get; init; } = false;
     public bool IsNetease { get; init; } = false;
+    public bool IsDouyin { get; init; } = false;
 
-    // 是否是功能入口（天气 / 基金 / 网易云），控制右侧箭头和 Time 显示
-    public bool IsSpecialEntry => IsWeather || IsFundTracker || IsNetease;
+    // 是否是功能入口（天气 / 基金 / 网易云 / 抖音），控制右侧箭头和 Time 显示
+    public bool IsSpecialEntry => IsWeather || IsFundTracker || IsNetease || IsDouyin;
 
     public string AvatarLetter => Name.Length > 0 ? Name[..1] : "?";
     public bool HasUnread => Unread > 0;
@@ -61,5 +65,6 @@ public partial class ChatItemViewModel : ObservableObject
     public string AvatarBg => IsWeather ? "#4FC3F7"
                             : IsFundTracker ? "#59b7c0"
                             : IsNetease ? "#E05C5C"
+                            : IsDouyin ? "#161823"
                             : "#07C160";
 }

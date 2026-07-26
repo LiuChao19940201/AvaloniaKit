@@ -49,6 +49,9 @@
 		<DataTemplate DataType="{x:Type chatVm:WeatherViewModel}">
 			<chat:WeatherUserControl/>
 		</DataTemplate>
+		<DataTemplate DataType="{x:Type chatVm:DouyinViewModel}">
+			<chat:DouyinUserControl/>
+		</DataTemplate>
 		<DataTemplate DataType="{x:Type chatVm:FundTrackerViewModel}">
 			<chat:FundTrackerUserControl />
 		</DataTemplate>

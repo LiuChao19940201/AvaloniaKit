@@ -21,6 +21,8 @@
     <PackageReference Include="Avalonia.Desktop" />
     <!-- 音频播放：MediaFoundation 流式解码 + WaveOut 输出 -->
     <PackageReference Include="NAudio" />
+    <!-- 抖音视频覆盖层：WebView2 HWND 子窗口 -->
+    <PackageReference Include="Microsoft.Web.WebView2" />
     <!-- 显式引用以覆盖 Avalonia.Desktop 传递依赖的漏洞版本（NU1903） -->
     <PackageReference Include="Tmds.DBus.Protocol" />
     <PackageReference Include="sqlite-net-pcl" />
@@ -32,4 +34,13 @@
   <ItemGroup>
     <ProjectReference Include="..\AvaloniaKit\AvaloniaKit.csproj" />
   </ItemGroup>
+
+  <!-- WebView2 包无条件引入 Wpf/WinForms 封装层（本项目只用 Core），
+       剔除以消除 WindowsBase 版本冲突警告 MSB3277 -->
+  <Target Name="TrimWebView2UiRefs" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <Reference Remove="@(Reference)"
+                 Condition="$([System.String]::new('%(Reference.Identity)').Contains('WebView2.Wpf')) Or $([System.String]::new('%(Reference.Identity)').Contains('WebView2.WinForms'))" />
+    </ItemGroup>
+  </Target>
 </Project>

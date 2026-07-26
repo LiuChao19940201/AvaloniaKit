@@ -18,11 +18,13 @@ internal sealed partial class Program
         // 先导入 JS 模块
         await JSHost.ImportAsync("storage", "/storage.js");
         await JSHost.ImportAsync("audio", "/audio.js");
+        await JSHost.ImportAsync("douyin", "/douyin.js");
 
         // 注册服务
         ServiceLocator.LocalDataService = new BrowserLocalDataService();
         ServiceLocator.ImagePickerService = new BrowserImagePickerService();
         ServiceLocator.AudioService = new BrowserAudioService();
+        ServiceLocator.DouyinService = new BrowserDouyinService();
 
         await BuildAvaloniaApp()
             .WithInterFont()

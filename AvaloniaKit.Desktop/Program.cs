@@ -26,6 +26,7 @@ namespace AvaloniaKit.Desktop
                 Path.Combine(appDataPath, "app.db"));
             ServiceLocator.ImagePickerService = new DesktopImagePickerService();
             ServiceLocator.AudioService = new DesktopAudioService();
+            ServiceLocator.DouyinService = new DesktopDouyinService();
 
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }

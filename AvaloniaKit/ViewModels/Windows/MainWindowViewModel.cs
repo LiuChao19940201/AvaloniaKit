@@ -24,6 +24,8 @@ public partial class MainWindowViewModel : ObservableObject,
     IRecipient<NavigateBackFromNeteasePlayerMessage>,
     IRecipient<NavigateToWeatherMessage>,
     IRecipient<NavigateBackFromWeatherMessage>,
+    IRecipient<NavigateToDouyinMessage>,
+    IRecipient<NavigateBackFromDouyinMessage>,
     IRecipient<NavigateToGameBoxesMessages>,
     IRecipient<NavigateBackFromGameBoxesMessage>,
     IRecipient<NavigateToTetrisMessages>,
@@ -44,6 +46,7 @@ public partial class MainWindowViewModel : ObservableObject,
     private readonly NeteaseViewModel _neteaseVm = new();
     private readonly NeteasePlayerViewModel _neteasePlayerVm = new();
     private readonly WeatherViewModel _weatherVm = new();
+    private readonly DouyinViewModel _douyinVm = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsChatActive))]
@@ -84,6 +87,7 @@ public partial class MainWindowViewModel : ObservableObject,
         NeteaseViewModel => "网易云音乐",
         NeteasePlayerViewModel => "",
         WeatherViewModel => "",
+        DouyinViewModel => "",
         _ => ""
     };
 
@@ -94,7 +98,8 @@ public partial class MainWindowViewModel : ObservableObject,
                                            and not SnakeViewModel
                                            and not NeteaseViewModel
                                            and not NeteasePlayerViewModel
-                                           and not WeatherViewModel;
+                                           and not WeatherViewModel
+                                           and not DouyinViewModel;
 
     public bool ShowTabBar => CurrentPage is not ServiceViewModel
                                         and not FundTrackerViewModel
@@ -104,7 +109,8 @@ public partial class MainWindowViewModel : ObservableObject,
                                         and not NeteaseViewModel
                                         and not NeteasePlayerViewModel
                                         and not GameBoxesViewModel
-                                        and not WeatherViewModel;
+                                        and not WeatherViewModel
+                                        and not DouyinViewModel;
 
     // ── ★ 全局边缘滑动返回：子页面统一返回入口 ──────────────────────────────
     // 复用各子页 VM 自己的 GoBackCommand（保留其内部清理逻辑，如游戏停表、音频退订）
@@ -114,6 +120,7 @@ public partial class MainWindowViewModel : ObservableObject,
                                          or NeteaseViewModel
                                          or NeteasePlayerViewModel
                                          or WeatherViewModel
+                                         or DouyinViewModel
                                          or TetrisViewModel
                                          or SnakeViewModel
                                          or GameBoxesViewModel;
@@ -128,6 +135,7 @@ public partial class MainWindowViewModel : ObservableObject,
             NeteaseViewModel vm => vm.GoBackCommand,
             NeteasePlayerViewModel vm => vm.GoBackCommand,
             WeatherViewModel vm => vm.GoBackCommand,
+            DouyinViewModel vm => vm.GoBackCommand,
             TetrisViewModel vm => vm.GoBackCommand,
             SnakeViewModel vm => vm.GoBackCommand,
             GameBoxesViewModel vm => vm.GoBackCommand,
@@ -203,6 +211,16 @@ public partial class MainWindowViewModel : ObservableObject,
     }
 
     public void Receive(NavigateBackFromWeatherMessage message)
+        => CurrentPage = _chatVm;
+
+    public void Receive(NavigateToDouyinMessage message)
+    {
+        CurrentPage = _douyinVm;
+        // ★ 先切页再显示覆盖层，避免覆盖层盖住旧页面闪烁
+        _douyinVm.OnNavigatedTo();
+    }
+
+    public void Receive(NavigateBackFromDouyinMessage message)
         => CurrentPage = _chatVm;
 
     public void Receive(NavigateToTetrisMessages message)

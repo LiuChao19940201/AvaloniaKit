@@ -38,6 +38,8 @@
     <PackageVersion Include="Tmds.DBus.Protocol"             Version="0.21.3" />
     <!-- Desktop 音频播放（Windows：MediaFoundation 流式 + WaveOut 输出） -->
     <PackageVersion Include="NAudio"                         Version="2.2.1" />
+    <!-- Desktop 抖音视频覆盖层（Windows WebView2，HWND 子窗口承载共享 HTML） -->
+    <PackageVersion Include="Microsoft.Web.WebView2"         Version="1.0.2903.40" />
 
     <!-- ═══ Android 专用 ═══ -->
     <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0.2" />

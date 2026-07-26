@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+			 xmlns:vm="clr-namespace:AvaloniaKit.ViewModels.UserControls.Chat"
+			 x:Class="AvaloniaKit.Views.UserControls.Chat.DouyinUserControl"
+			 d:DesignWidth="390" d:DesignHeight="760"
+			 x:DataType="vm:DouyinViewModel">
+
+	<Design.DataContext>
+		<vm:DouyinViewModel/>
+	</Design.DataContext>
+
+	<!-- 视频界面由平台 WebView 覆盖层呈现（共享 HTML）；
+	     本页为黑底承托 + 服务缺失时的占位提示 -->
+	<Grid Background="Black">
+		<StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+					Spacing="14" IsVisible="{Binding !HasService}">
+			<TextBlock Text="📵" FontSize="44" HorizontalAlignment="Center"/>
+			<TextBlock Text="当前平台暂不支持视频播放"
+					   FontSize="15" Foreground="#B3FFFFFF"
+					   HorizontalAlignment="Center"/>
+			<Button Content="返 回"
+					Command="{Binding GoBackCommand}"
+					HorizontalAlignment="Center"
+					Background="#FE2C55" Foreground="White"
+					CornerRadius="20" Padding="26,8" BorderThickness="0"/>
+		</StackPanel>
+
+		<!-- 兜底返回按钮（覆盖层意外未显示时仍可退出） -->
+		<Button Command="{Binding GoBackCommand}"
+				Background="Transparent" BorderThickness="0"
+				Width="44" Height="44" Margin="6,14,0,0"
+				HorizontalAlignment="Left" VerticalAlignment="Top">
+			<Viewbox Width="20" Height="20">
+				<Canvas Width="24" Height="24">
+					<Path Data="M20 11H7.83L13.42 5.41 12 4 4 12 12 20 13.41 18.59 7.83 13H20V11Z"
+						  Fill="White"/>
+				</Canvas>
+			</Viewbox>
+		</Button>
+	</Grid>
+</UserControl>
