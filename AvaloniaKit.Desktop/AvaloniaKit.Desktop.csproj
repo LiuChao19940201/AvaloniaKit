@@ -19,8 +19,12 @@
   <ItemGroup>
     <!-- Desktop 平台专用包 -->
     <PackageReference Include="Avalonia.Desktop" />
+    <!-- 显式引用以覆盖 Avalonia.Desktop 传递依赖的漏洞版本（NU1903） -->
+    <PackageReference Include="Tmds.DBus.Protocol" />
     <PackageReference Include="sqlite-net-pcl" />
     <PackageReference Include="SQLitePCLRaw.bundle_green" />
+    <!-- 显式引用以覆盖 bundle_green 传递依赖的漏洞版本（NU1903） -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
   </ItemGroup>
 
   <ItemGroup>

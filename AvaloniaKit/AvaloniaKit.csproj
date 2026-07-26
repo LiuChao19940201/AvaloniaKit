@@ -17,13 +17,8 @@
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" />
     <PackageReference Include="Irihi.Ursa" />
     <PackageReference Include="Irihi.Ursa.Themes.Semi" />
-    <PackageReference Include="Quick.AvaloniaFonts.Roboto" />
     <PackageReference Include="Semi.Avalonia" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Assets\weather\" />
   </ItemGroup>
 
   <ItemGroup>

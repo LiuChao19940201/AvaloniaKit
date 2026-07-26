@@ -71,7 +71,7 @@ public partial class FundTrackerViewModel : ObservableObject
     private CancellationTokenSource? _refreshCts;
 
     // ════════════════════════════════════════════════════════════════════════
-    //  ★ 新增：Tab 切换
+    //  Tab 切换
     // ════════════════════════════════════════════════════════════════════════
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDiscoverActive))]
@@ -85,7 +85,7 @@ public partial class FundTrackerViewModel : ObservableObject
     [RelayCommand] private void SwitchToWatchlist() { ActiveTab = 1; _ = DoRefreshAsync(); }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  ★ 新增：发现 Tab —— 热门分类
+    //  发现 Tab —— 热门分类
     // ════════════════════════════════════════════════════════════════════════
     public ObservableCollection<DiscoverCategory> DiscoverCategories { get; } = new()
     {
@@ -534,7 +534,7 @@ public partial class FundTrackerViewModel : ObservableObject
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  ★ 新增：发现分类 Tab 标签
+//  发现分类 Tab 标签
 // ══════════════════════════════════════════════════════════════════════════════
 public partial class DiscoverCategory : ObservableObject
 {
@@ -545,7 +545,7 @@ public partial class DiscoverCategory : ObservableObject
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  ★ 新增：发现基金卡片
+//  发现基金卡片
 // ══════════════════════════════════════════════════════════════════════════════
 public partial class DiscoverFundItem : ObservableObject
 {

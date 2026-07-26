@@ -47,7 +47,7 @@ public partial class ChatItemViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasUnread))]
     private int _unread = 0;
 
-    public bool IsWeather { get; init; } = false;   // ★ 新增
+    public bool IsWeather { get; init; } = false;
     public bool IsFundTracker { get; init; } = false;
     public bool IsNetease { get; init; } = false;
 

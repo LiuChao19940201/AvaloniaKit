@@ -28,8 +28,7 @@ public partial class MainWindowViewModel : ObservableObject,
     IRecipient<NavigateBackFromGameBoxesMessage>,
     IRecipient<NavigateToTetrisMessages>,
     IRecipient<NavigateBackFromTetrisMessage>,
-    IRecipient<NavigateToSnakeMessages>,
-    IRecipient<NavigateBackFromSnakeMessage>
+    IRecipient<NavigateToSnakeMessages>
 {
     // ── 页面 ViewModel 实例 ──
     private readonly ChatViewModel _chatVm = new();
@@ -89,7 +88,6 @@ public partial class MainWindowViewModel : ObservableObject,
                                            and not FundTrackerViewModel
                                            and not TetrisViewModel
                                            and not SnakeViewModel
-                                           and not NeteaseViewModel
                                            and not NeteaseViewModel
                                            and not NeteasePlayerViewModel
                                            and not WeatherViewModel;
@@ -217,10 +215,5 @@ public partial class MainWindowViewModel : ObservableObject,
     public void Receive(NavigateToSnakeMessages message)
     {
         CurrentPage = _snakeVm;
-    }
-
-    public void Receive(NavigateBackFromSnakeMessage message)
-    {
-        CurrentPage = _gameBoxesVm;
     }
 }

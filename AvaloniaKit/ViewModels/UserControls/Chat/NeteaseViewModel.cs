@@ -22,8 +22,8 @@ namespace AvaloniaKit.ViewModels.UserControls.Chat;
 //  NeteaseViewModel  — 网易云音乐主页
 // ══════════════════════════════════════════════════════════════════════════════
 public partial class NeteaseViewModel : ObservableObject,
-    IRecipient<NeteasePlayPrevMessage>,   // ★ 新增
-    IRecipient<NeteasePlayNextMessage>    // ★ 新增
+    IRecipient<NeteasePlayPrevMessage>,
+    IRecipient<NeteasePlayNextMessage>
 {
     // ── HTTP ─────────────────────────────────────────────────────────────────
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(15) };
@@ -223,7 +223,11 @@ public partial class NeteaseViewModel : ObservableObject,
 
         try
         {
-            await LoadPlaylistAsync(RecommendSongs, 3778678, 30);
+            // ★ 对齐官方未登录态首页：「推荐新音乐」接口返回实时新歌
+            await LoadPersonalizedNewSongAsync(RecommendSongs, 30);
+            // 接口失效时退回热歌榜，再不行用离线数据
+            if (RecommendSongs.Count == 0)
+                await LoadPlaylistAsync(RecommendSongs, 3778678, 30);
             if (RecommendSongs.Count == 0)
                 LoadRecommendFallback();
             StatusText = $"已加载 {RecommendSongs.Count} 首";
@@ -234,6 +238,36 @@ public partial class NeteaseViewModel : ObservableObject,
             StatusText = "已加载（离线数据）";
         }
         finally { IsRecommendLoading = false; }
+    }
+
+    // ── 官方「推荐新音乐」：与网易云 App 未登录态推荐一致 ──
+    private async Task LoadPersonalizedNewSongAsync(
+        ObservableCollection<NeteaseSongItem> target, int limit)
+    {
+        try
+        {
+            string url = $"https://music.163.com/api/personalized/newsong?limit={limit}";
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+            string raw = await _http.GetStringAsync(url, cts.Token);
+
+            using var doc = JsonDocument.Parse(raw);
+            if (!doc.RootElement.TryGetProperty("result", out var result) ||
+                result.ValueKind != JsonValueKind.Array)
+                return;
+
+            var seen = new HashSet<long>();
+            foreach (var entry in result.EnumerateArray())
+            {
+                if (!entry.TryGetProperty("song", out var song)) continue;
+                var item = ParseSongItem(song);
+                if (item == null || !seen.Add(item.Id)) continue;
+                // 封面优先用外层 picUrl（song.album 里可能缺失）
+                if (string.IsNullOrEmpty(item.CoverUrl))
+                    item.CoverUrl = entry.TryGetStr("picUrl") ?? "";
+                target.Add(item);
+            }
+        }
+        catch { /* 保持 target 为空，由调用方兜底 */ }
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -255,8 +289,81 @@ public partial class NeteaseViewModel : ObservableObject,
         finally { IsRankLoading = false; }
     }
 
-    // ── 通用歌单加载 ─────────────────────────────────────────────────────────
+    // ── 通用歌单加载：v6 接口拿实时 trackIds → song/detail 批量取详情 ──
+    // 老版 api/playlist/detail 返回的是陈旧缓存，与官方榜单不一致
     private async Task LoadPlaylistAsync(
+        ObservableCollection<NeteaseSongItem> target, long listId, int limit)
+    {
+        var ids = await GetPlaylistTrackIdsAsync(listId, limit);
+        if (ids.Count > 0)
+        {
+            await LoadSongDetailAsync(target, ids);
+            if (target.Count > 0) return;
+        }
+        // 兜底：老接口（数据可能滞后，但好过没有）
+        await LoadPlaylistLegacyAsync(target, listId, limit);
+    }
+
+    private async Task<List<long>> GetPlaylistTrackIdsAsync(long listId, int limit)
+    {
+        var ids = new List<long>();
+        try
+        {
+            string url = $"https://music.163.com/api/v6/playlist/detail?id={listId}&n=0";
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+            string raw = await _http.GetStringAsync(url, cts.Token);
+
+            using var doc = JsonDocument.Parse(raw);
+            if (doc.RootElement.TryGetProperty("playlist", out var playlist) &&
+                playlist.TryGetProperty("trackIds", out var trackIds) &&
+                trackIds.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var t in trackIds.EnumerateArray())
+                {
+                    long id = t.TryGetLong("id");
+                    if (id != 0) ids.Add(id);
+                    if (ids.Count >= limit) break;
+                }
+            }
+        }
+        catch { /* 返回空，走老接口兜底 */ }
+        return ids;
+    }
+
+    private async Task LoadSongDetailAsync(
+        ObservableCollection<NeteaseSongItem> target, List<long> ids)
+    {
+        try
+        {
+            var sb = new System.Text.StringBuilder("[");
+            for (int i = 0; i < ids.Count; i++)
+            {
+                if (i > 0) sb.Append(',');
+                sb.Append("{\"id\":").Append(ids[i]).Append('}');
+            }
+            sb.Append(']');
+
+            string url = $"https://music.163.com/api/v3/song/detail?c={Uri.EscapeDataString(sb.ToString())}";
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+            string raw = await _http.GetStringAsync(url, cts.Token);
+
+            using var doc = JsonDocument.Parse(raw);
+            if (!doc.RootElement.TryGetProperty("songs", out var songs) ||
+                songs.ValueKind != JsonValueKind.Array)
+                return;
+
+            var seen = new HashSet<long>();
+            foreach (var s in songs.EnumerateArray())
+            {
+                var item = ParseSongItem(s);
+                if (item != null && seen.Add(item.Id))
+                    target.Add(item);
+            }
+        }
+        catch { /* 保持 target 为空，由调用方兜底 */ }
+    }
+
+    private async Task LoadPlaylistLegacyAsync(
         ObservableCollection<NeteaseSongItem> target, long listId, int limit)
     {
         string url = $"https://music.163.com/api/playlist/detail?id={listId}";
@@ -332,7 +439,7 @@ public partial class NeteaseViewModel : ObservableObject,
         finally { IsSearchLoading = false; }
     }
 
-    // ── 解析歌曲（playlist/detail 格式）──────────────────────────────────────
+    // ── 解析歌曲（兼容 v3 song/detail 的 ar/al/dt 与老接口的 artists/album/duration）──
     private static NeteaseSongItem? ParseSongItem(JsonElement t)
     {
         try

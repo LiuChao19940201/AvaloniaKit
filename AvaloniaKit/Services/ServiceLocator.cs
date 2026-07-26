@@ -6,5 +6,5 @@ public static class ServiceLocator
     public static IDeviceService?       DeviceService       { get; set; }
     public static IImagePickerService?  ImagePickerService  { get; set; }
     public static ILocalDataService?    LocalDataService    { get; set; }
-    public static IAudioService?        AudioService        { get; set; }  // ★ 新增
+    public static IAudioService?        AudioService        { get; set; }
 }

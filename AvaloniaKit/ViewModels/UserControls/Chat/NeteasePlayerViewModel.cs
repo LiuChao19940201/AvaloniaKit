@@ -88,14 +88,31 @@ public partial class NeteasePlayerViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RepeatModeIcon))]
+    [NotifyPropertyChangedFor(nameof(RepeatModeName))]
     private int _repeatMode = 0;
+
+    /// <summary>播放模式名称：0=列表循环 1=单曲循环 2=随机播放</summary>
+    public string RepeatModeName => RepeatMode switch
+    {
+        1 => "单曲循环",
+        2 => "随机播放",
+        _ => "列表循环",
+    };
 
     public string RepeatModeIcon => RepeatMode switch
     {
-        1 => "M7 7H17V10L21 6L17 2V5H5V11H7V7ZM17 17H7V14L3 18L7 22V19H19V13H17V17Z",
+        // 单曲循环：循环箭头中间带 “1”
+        1 => "M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v4H13z",
+        // 随机播放：交叉箭头
         2 => "M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z",
-        _ => "M7 7H17V10L21 6L17 2V5H5V11H7V7ZM17 17H7V14L3 18L7 22V19H19V13H17V17Z",
+        // 列表循环：循环箭头
+        _ => "M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z",
     };
+
+    // ── 模式切换 toast：短暂显示当前播放模式名称 ──
+    [ObservableProperty] private string _modeToastText = "";
+    [ObservableProperty] private bool _isModeToastVisible = false;
+    private CancellationTokenSource? _toastCts;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LikeColor))]
@@ -412,7 +429,27 @@ public partial class NeteasePlayerViewModel : ObservableObject
 
     [RelayCommand] private void ToggleView() => IsLyricView = !IsLyricView;
     [RelayCommand] private void ToggleLike() => IsLiked = !IsLiked;
-    [RelayCommand] private void ToggleRepeatMode() => RepeatMode = (RepeatMode + 1) % 3;
+
+    [RelayCommand]
+    private void ToggleRepeatMode()
+    {
+        RepeatMode = (RepeatMode + 1) % 3;
+        ShowModeToast(RepeatModeName);
+    }
+
+    private void ShowModeToast(string text)
+    {
+        _toastCts?.Cancel();
+        _toastCts = new CancellationTokenSource();
+        var token = _toastCts.Token;
+        ModeToastText = text;
+        IsModeToastVisible = true;
+        _ = Task.Delay(1500, token).ContinueWith(t =>
+        {
+            if (t.IsCanceled) return;
+            Dispatcher.UIThread.Post(() => IsModeToastVisible = false);
+        });
+    }
 
     [RelayCommand]
     private void SeekProgress(double percent)
@@ -533,8 +570,8 @@ public partial class LyricLine : ObservableObject
     [NotifyPropertyChangedFor(nameof(FontSize))]
     private bool _isActive = false;
 
-    // ★ 播放页改为深色模糊背景，歌词配色同步调整：当前行白色、其余半透白
+    // ★ 深色模糊背景上的歌词配色：当前行用鲜艳红醒目提示，其余半透白
     public string FontWeight => IsActive ? "SemiBold" : "Normal";
-    public string Foreground => IsActive ? "#FFFFFF" : "#66FFFFFF";
+    public string Foreground => IsActive ? "#FF5252" : "#66FFFFFF";
     public double FontSize => IsActive ? 18 : 15;
 }

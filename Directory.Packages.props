@@ -24,15 +24,18 @@
     <PackageVersion Include="Irihi.Ursa"                     Version="$(UrsaVersion)" />
     <PackageVersion Include="Irihi.Ursa.Themes.Semi"         Version="$(UrsaVersion)" />
 
-    <!-- ═══ 字体 ═══ -->
-    <PackageVersion Include="Quick.AvaloniaFonts.Roboto"     Version="1.0.0" />
-
     <!-- ═══ MVVM ═══ -->
     <PackageVersion Include="CommunityToolkit.Mvvm"          Version="8.4.0" />
 
     <!-- ═══ SQLite（Desktop + Android） ═══ -->
-    <PackageVersion Include="sqlite-net-pcl"                 Version="1.9.172" />
+    <PackageVersion Include="sqlite-net-pcl"                 Version="1.11.285" />
     <PackageVersion Include="SQLitePCLRaw.bundle_green"      Version="2.1.11" />
+    <!-- 显式覆盖 bundle_green 传递依赖的漏洞版本（NU1903 / GHSA-2m69-gcr7-jv3q） -->
+    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3"     Version="2.1.12" />
+    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3.android" Version="2.1.12" />
+
+    <!-- ═══ Desktop 专用（显式覆盖 Avalonia.Desktop 传递依赖的漏洞版本） ═══ -->
+    <PackageVersion Include="Tmds.DBus.Protocol"             Version="0.21.3" />
 
     <!-- ═══ Android 专用 ═══ -->
     <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0.2" />

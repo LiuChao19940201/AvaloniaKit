@@ -55,7 +55,7 @@ namespace AvaloniaKit.Android
             ServiceLocator.LocalDataService   = new SqliteLocalDataService(dbPath);
             ServiceLocator.DeviceService      = new AndroidDeviceService(this);
             ServiceLocator.ImagePickerService = new AndroidImagePickerService(this);
-            ServiceLocator.AudioService       = new AndroidAudioService();  // ★ 新增
+            ServiceLocator.AudioService       = new AndroidAudioService();
 
             base.OnCreate(savedInstanceState);
 

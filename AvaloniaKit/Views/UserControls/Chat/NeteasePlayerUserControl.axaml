@@ -126,6 +126,7 @@
                     <!-- 播放模式 -->
                     <Button Grid.Column="0" Classes="ctrl-btn"
                             Command="{Binding ToggleRepeatModeCommand}"
+                            ToolTip.Tip="{Binding RepeatModeName}"
                             HorizontalAlignment="Center">
                         <Viewbox Width="24" Height="24">
                             <Canvas Width="24" Height="24">
@@ -282,7 +283,7 @@
                         <!-- ★ 仿网易云：封面视图底部同步显示当前唱到的那句词 -->
                         <TextBlock Text="{Binding CurrentLyricText}"
                                    IsVisible="{Binding CurrentLyricText.Length}"
-                                   FontSize="14" Foreground="#CCFFFFFF"
+                                   FontSize="14" Foreground="#FF5252"
                                    HorizontalAlignment="Center"
                                    TextTrimming="CharacterEllipsis"
                                    MaxWidth="300"/>
@@ -339,5 +340,17 @@
             </Panel>
 
         </DockPanel>
+
+        <!-- ★ 播放模式切换 toast：居中短暂提示“列表循环/单曲循环/随机播放” -->
+        <Border IsVisible="{Binding IsModeToastVisible}"
+                Background="#CC26262E"
+                CornerRadius="18"
+                Padding="18,9"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="0,0,0,120">
+            <TextBlock Text="{Binding ModeToastText}"
+                       FontSize="14" Foreground="White"/>
+        </Border>
     </Grid>
 </UserControl>
