@@ -5,9 +5,12 @@ namespace AvaloniaKit.Tools;
 //  · 视频源：公开短视频 API（302 → CDN mp4），video 标签直连不受 CORS 限制
 //  · 界面还原：全屏竖屏视频、右侧头像/点赞/评论/收藏/分享/唱片、底部作者与
 //    文案、音乐跑马灯、底部细进度条、加载转圈
+//  · 图像：博主/评论头像用 qlogo.cn（随机 QQ 号→真实头像，国内直连），
+//    主页作品预览图用 picsum.photos/seed（永不 404）；加载失败自动回退
+//    字母/渐变占位，不依赖网络也不留白
 //  · 交互：上滑/下滑（触摸+滚轮）切换视频、单击暂停/播放、双击飘红心点赞
-//  · 返回：左上角按钮 → iframe 场景 postMessage('douyin-exit')，
-//    WebView 场景导航 app://exit（由平台层拦截）
+//  · 返回：由宿主 Avalonia 标题栏的统一返回按钮处理（覆盖层从标题栏下方开始，
+//    HTML 内不再自绘返回按钮）
 // ══════════════════════════════════════════════════════════════════════════════
 public static class DouyinHtml
 {
@@ -26,14 +29,12 @@ public static class DouyinHtml
   video { position:absolute; inset:0; width:100%; height:100%;
           object-fit:contain; background:#000; transition:opacity .18s; }
 
-  /* 顶部返回 + 标题 */
-  .topbar { position:fixed; top:0; left:0; right:0; height:64px; z-index:30;
-            display:flex; align-items:center; padding:14px 6px 0 6px;
+  /* 顶部切换 Tab（返回按钮在宿主 Avalonia 标题栏，这里只保留 Tab） */
+  .topbar { position:fixed; top:0; left:0; right:0; height:46px; z-index:30;
+            display:flex; align-items:center; padding-top:6px;
             background:linear-gradient(#00000088,transparent); }
-  .back { width:44px; height:44px; display:flex; align-items:center; justify-content:center;
-          color:#fff; font-size:24px; }
   .tabs { flex:1; display:flex; justify-content:center; gap:22px;
-          color:#ffffffa0; font-size:16px; margin-right:44px; }
+          color:#ffffffa0; font-size:16px; }
   .tabs .on { color:#fff; font-weight:600; position:relative; }
   .tabs .on::after { content:''; position:absolute; left:50%; transform:translateX(-50%);
                      bottom:-7px; width:22px; height:3px; border-radius:2px; background:#fff; }
@@ -45,9 +46,12 @@ public static class DouyinHtml
             background:linear-gradient(135deg,#7F7FD5,#86A8E7,#91EAE4);
             display:flex; align-items:center; justify-content:center;
             color:#fff; font-size:20px; font-weight:700; position:relative; }
+  /* ★ 真实头像图：盖在字母占位上，加载失败隐藏露出占位 */
+  .avatar img { position:absolute; inset:0; width:100%; height:100%;
+                border-radius:50%; object-fit:cover; }
   .avatar .plus { position:absolute; bottom:-9px; left:50%; transform:translateX(-50%);
                   width:19px; height:19px; border-radius:50%; background:#FE2C55;
-                  color:#fff; font-size:14px; line-height:19px; text-align:center; }
+                  color:#fff; font-size:14px; line-height:19px; text-align:center; z-index:2; }
   .act { display:flex; flex-direction:column; align-items:center; gap:3px; color:#fff; }
   .act .ico { font-size:32px; filter:drop-shadow(0 1px 3px #0008); transition:transform .12s; }
   .act .num { font-size:12px; color:#fffffff0; }
@@ -107,7 +111,9 @@ public static class DouyinHtml
   .c-item { display:flex; gap:10px; padding:10px 0; }
   .c-ava { width:36px; height:36px; border-radius:50%; flex:none;
            display:flex; align-items:center; justify-content:center;
-           color:#fff; font-size:15px; font-weight:700; }
+           color:#fff; font-size:15px; font-weight:700;
+           position:relative; overflow:hidden; }
+  .c-ava img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .c-body { flex:1; min-width:0; }
   .c-name { font-size:13px; color:#ffffff80; }
   .c-text { font-size:14.5px; color:#fff; line-height:1.45; margin-top:3px; }
@@ -138,8 +144,10 @@ public static class DouyinHtml
   .p-head { padding:0 16px 14px; margin-top:-38px; }
   .p-avatar { width:76px; height:76px; border-radius:50%; border:3px solid #121420;
               display:flex; align-items:center; justify-content:center;
-              color:#fff; font-size:30px; font-weight:700;
+              color:#fff; font-size:30px; font-weight:700; position:relative;
               background:linear-gradient(135deg,#7F7FD5,#86A8E7,#91EAE4); }
+  .p-avatar img { position:absolute; inset:0; width:100%; height:100%;
+                  border-radius:50%; object-fit:cover; }
   .p-name { margin-top:10px; color:#fff; font-size:20px; font-weight:700; }
   .p-id { margin-top:4px; color:#ffffff66; font-size:12.5px; }
   .p-stats { margin-top:12px; color:#ffffff80; font-size:13px;
@@ -157,9 +165,11 @@ public static class DouyinHtml
                        transform:translateX(-50%); width:32px; height:2.5px;
                        background:#FACE15; border-radius:2px; }
   .p-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; padding:2px; }
-  .p-cell { position:relative; aspect-ratio:3/4; display:flex;
-            align-items:flex-end; padding:6px; }
-  .p-cell .pv { color:#fff; font-size:12px; text-shadow:0 1px 3px #000a; }
+  .p-cell { position:relative; aspect-ratio:3/4; min-height:140px; display:flex;
+            align-items:flex-end; padding:6px; overflow:hidden; }
+  .p-cell img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .p-cell .pv { position:relative; z-index:1; color:#fff; font-size:12px;
+                text-shadow:0 1px 3px #000a; }
 </style>
 </head>
 <body>
@@ -168,12 +178,11 @@ public static class DouyinHtml
 </div>
 
 <div class="topbar">
-  <div class="back" id="btnBack">&#10094;</div>
   <div class="tabs"><span>关注</span><span class="on">推荐</span></div>
 </div>
 
 <div class="side">
-  <div class="avatar" id="avatar">A<span class="plus">+</span></div>
+  <div class="avatar" id="avatar"><span id="avaTxt">A</span><img id="avaImg" alt=""/><span class="plus">+</span></div>
   <div class="act" id="btnLike"><span class="ico">&#10084;</span><span class="num" id="numLike">12.3w</span></div>
   <div class="act" id="btnCmt"><span class="ico">&#128172;</span><span class="num" id="numCmt">8592</span></div>
   <div class="act"><span class="ico">&#11088;</span><span class="num" id="numFav">2.1w</span></div>
@@ -205,7 +214,7 @@ public static class DouyinHtml
   <div class="p-back" id="pBack">&#10094;</div>
   <div class="p-cover"></div>
   <div class="p-head">
-    <div class="p-avatar" id="pAvatar">A</div>
+    <div class="p-avatar" id="pAvatar"><span id="pAvaTxt">A</span><img id="pAvaImg" alt=""/></div>
     <div class="p-name" id="pName">@小可爱</div>
     <div class="p-id" id="pId">抖音号：dy10086</div>
     <div class="p-stats">
@@ -268,6 +277,13 @@ public static class DouyinHtml
   function rndNum(){ var n = Math.random()*30; return n>10 ? n.toFixed(1)+'w' : Math.floor(n*9000+500)+''; }
   function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
 
+  // ★ 真实头像：随机 QQ 号的 qlogo 头像（国内 CDN 直连，失败时回退字母占位）
+  function qqAvatar(){
+    return 'https://q' + (1 + Math.floor(Math.random()*4)) +
+           '.qlogo.cn/g?b=qq&nk=' + Math.floor(1e8 + Math.random()*2.4e9) + '&s=100';
+  }
+  var curAvatar = '';   // 当前视频博主头像 URL（主页复用，与信息流一致）
+
   // ★ 不与上一次重复的随机选取（避免“同一博主连着刷”的重复感）
   function pickNoRepeat(a, last){
     if (a.length < 2) return a[0];
@@ -299,7 +315,12 @@ public static class DouyinHtml
     var who = pickNoRepeat(names, curWho);
     curWho = who;
     document.getElementById('who').textContent = '@' + who;
-    document.getElementById('avatar').firstChild.textContent = who[0];
+    // ★ 换人同步换头像：先露字母占位，图片加载成功后盖上
+    document.getElementById('avaTxt').textContent = who[0];
+    curAvatar = qqAvatar();
+    var avaImg = document.getElementById('avaImg');
+    avaImg.style.display = 'block';
+    avaImg.src = curAvatar;
     document.getElementById('txt').textContent = pick(texts);
     document.getElementById('mq').textContent = '@' + who + ' ' + pick(musics);
 
@@ -314,6 +335,8 @@ public static class DouyinHtml
   }
 
   vd.addEventListener('canplay', function(){ spin.style.display = 'none'; vd.style.opacity = 1; });
+  document.getElementById('avaImg').addEventListener('error', function(){ this.style.display = 'none'; });
+  document.getElementById('pAvaImg').addEventListener('error', function(){ this.style.display = 'none'; });
   vd.addEventListener('waiting', function(){ spin.style.display = 'block'; });
   vd.addEventListener('playing', function(){ spin.style.display = 'none'; pauseIco.style.display = 'none'; vd.style.opacity = 1; });
   vd.addEventListener('ended', load);
@@ -423,7 +446,8 @@ public static class DouyinHtml
       var item = document.createElement('div');
       item.className = 'c-item';
       item.innerHTML =
-        '<div class="c-ava" style="background:' + pick(cmtColors) + '">' + name[0] + '</div>' +
+        '<div class="c-ava" style="background:' + pick(cmtColors) + '">' + name[0] +
+        '<img src="' + qqAvatar() + '" alt="" onerror="this.remove()"/></div>' +
         '<div class="c-body"><div class="c-name">' + name + '</div>' +
         '<div class="c-text">' + pick(cmtPool) + '</div>' +
         '<div class="c-meta">' + (1 + Math.floor(Math.random()*23)) + '小时前 · 回复</div></div>' +
@@ -460,7 +484,11 @@ public static class DouyinHtml
                     '#3B2F52','#2F4A4A','#523F2C'];
 
   function openProfile(){
-    document.getElementById('pAvatar').textContent = curWho[0];
+    // ★ 主页头像与信息流头像保持同一张（失败回退字母占位）
+    document.getElementById('pAvaTxt').textContent = curWho[0];
+    var pImg = document.getElementById('pAvaImg');
+    pImg.style.display = 'block';
+    pImg.src = curAvatar || qqAvatar();
     document.getElementById('pName').textContent = '@' + curWho;
     document.getElementById('pId').textContent =
       '抖音号：dy' + Math.floor(Math.random()*90000000+10000000);
@@ -487,7 +515,11 @@ public static class DouyinHtml
       cell.className = 'p-cell';
       cell.style.background =
         'linear-gradient(160deg,' + pick(gridColors) + ',' + pick(gridColors) + ')';
-      cell.innerHTML = '<span class="pv">&#9654; ' + rndNum() + '</span>';
+      // ★ 真实预览图：picsum seed 永不 404；加载失败移除露出渐变占位
+      cell.innerHTML =
+        '<img src="https://picsum.photos/seed/dy' + Math.floor(Math.random()*100000) +
+        '/240/320" alt="" loading="lazy" onerror="this.remove()"/>' +
+        '<span class="pv">&#9654; ' + rndNum() + '</span>';
       cell.addEventListener('click', function(){ closeProfile(); load(); });
       grid.appendChild(cell);
     }
@@ -507,15 +539,6 @@ public static class DouyinHtml
     this.classList.add('on');
     document.getElementById('pTabWorks').classList.remove('on');
     buildGrid();
-  });
-
-  // ── 返回：iframe → postMessage；WebView → app://exit 导航 ──
-  document.getElementById('btnBack').addEventListener('click', function(e){
-    e.stopPropagation();
-    try {
-      if (window.parent !== window){ window.parent.postMessage('douyin-exit', '*'); return; }
-    } catch(err){}
-    window.location.href = 'app://exit';
   });
 
   load();

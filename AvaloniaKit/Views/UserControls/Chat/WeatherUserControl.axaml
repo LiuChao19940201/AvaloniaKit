@@ -32,46 +32,20 @@
 			<Setter Property="CornerRadius" Value="16"/>
 			<Setter Property="Padding"      Value="16,14"/>
 		</Style>
-		<!-- 城市选择按钮 -->
+		<!-- 城市选择按钮（字面量白字深底，不依赖主题资源，任何天气背景下都清晰） -->
 		<Style Selector="Button.city-btn">
-			<Setter Property="Background"      Value="{DynamicResource SemiColorFillQuaternary}"/>
-			<Setter Property="Foreground"      Value="{DynamicResource SemiColorText0}"/>
+			<Setter Property="Background"      Value="#24FFFFFF"/>
+			<Setter Property="Foreground"      Value="White"/>
 			<Setter Property="FontSize"        Value="13"/>
 			<Setter Property="Padding"         Value="16,8"/>
 			<Setter Property="CornerRadius"    Value="18"/>
-			<Setter Property="BorderBrush"     Value="{DynamicResource SemiColorBorder}"/>
+			<Setter Property="BorderBrush"     Value="#38FFFFFF"/>
 			<Setter Property="BorderThickness" Value="1"/>
 			<Setter Property="MinHeight"       Value="0"/>
 			<Setter Property="Margin"          Value="0,0,10,10"/>
 		</Style>
 		<Style Selector="Button.city-btn:pointerover /template/ ContentPresenter">
-			<Setter Property="Background" Value="{DynamicResource SemiColorFillTertiary}"/>
-		</Style>
-
-		<!-- ★ 城市弹层：遮罩淡入 + 底部面板上滑（微信风格动效） -->
-		<Style Selector="Border#CityScrim">
-			<Setter Property="Opacity" Value="0"/>
-			<Setter Property="Transitions">
-				<Transitions>
-					<DoubleTransition Property="Opacity" Duration="0:0:0.22"/>
-				</Transitions>
-			</Setter>
-		</Style>
-		<Style Selector="Border#CityScrim.open">
-			<Setter Property="Opacity" Value="1"/>
-		</Style>
-		<Style Selector="Border#CitySheet">
-			<Setter Property="RenderTransform" Value="translateY(520px)"/>
-			<Setter Property="Transitions">
-				<Transitions>
-					<TransformOperationsTransition Property="RenderTransform"
-					                               Duration="0:0:0.28"
-					                               Easing="CubicEaseOut"/>
-				</Transitions>
-			</Setter>
-		</Style>
-		<Style Selector="Border#CitySheet.open">
-			<Setter Property="RenderTransform" Value="translateY(0px)"/>
+			<Setter Property="Background" Value="#3DFFFFFF"/>
 		</Style>
 	</UserControl.Styles>
 
@@ -258,41 +232,39 @@
 			</ScrollViewer>
 		</DockPanel>
 
-		<!-- ══ 城市选择底部弹层（常驻可视树，用 open 类驱动遮罩淡入/面板上滑）══ -->
-		<Panel Name="CityLayer" ClipToBounds="True"
-			   IsHitTestVisible="{Binding IsCityPanelOpen}">
+		<!-- ══ 城市选择底部弹层（★ IsVisible 直控显隐：关闭即彻底移出渲染，
+		     实底深色面板 + 字面量白字，不依赖主题资源/名称选择器/变换动画，
+		     修复此前面板背景不渲染、内容与页面重叠看不清的问题）══ -->
+		<Panel Name="CityLayer" IsVisible="{Binding IsCityPanelOpen}">
 			<!-- 深色遮罩：点击关闭（code-behind 处理） -->
-			<Border Name="CityScrim"
-					Classes.open="{Binding IsCityPanelOpen}"
-					Background="#A8000000"/>
-			<!-- 底部面板：圆角 + 阴影 + 拖拉把手，与背景页面明确分层 -->
+			<Border Name="CityScrim" Background="#B3000000"/>
+			<!-- 底部面板：实底深蓝灰 + 圆角 + 阴影，与背景页面明确分层 -->
 			<Border Name="CitySheet"
-					Classes.open="{Binding IsCityPanelOpen}"
 					VerticalAlignment="Bottom"
-					Background="{DynamicResource SemiColorBg0}"
+					Background="#FF1F2B3B"
 					CornerRadius="20,20,0,0"
-					BoxShadow="0 -8 28 0 #66000000"
+					BoxShadow="0 -8 28 0 #99000000"
 					Padding="20,10,20,26">
 				<StackPanel Spacing="12">
 					<!-- 拖拉把手 -->
 					<Border Width="36" Height="4" CornerRadius="2"
-							Background="{DynamicResource SemiColorFillTertiary}"
+							Background="#4DFFFFFF"
 							HorizontalAlignment="Center"/>
 					<Grid ColumnDefinitions="*,Auto">
 						<StackPanel Spacing="2">
 							<TextBlock Text="选择城市" FontSize="17" FontWeight="SemiBold"
-									   Foreground="{DynamicResource SemiColorText0}"/>
+									   Foreground="White"/>
 							<TextBlock Text="切换后自动刷新实时天气与预报" FontSize="12"
-									   Foreground="{DynamicResource SemiColorText2}"/>
+									   Foreground="#99FFFFFF"/>
 						</StackPanel>
 						<Button Grid.Column="1" Classes="icon-btn"
 								VerticalAlignment="Top"
 								Command="{Binding ToggleCityPanelCommand}">
 							<Border Width="26" Height="26" CornerRadius="13"
-									Background="{DynamicResource SemiColorFillQuaternary}">
+									Background="#26FFFFFF">
 								<TextBlock Text="✕" FontSize="12"
 										   HorizontalAlignment="Center" VerticalAlignment="Center"
-										   Foreground="{DynamicResource SemiColorText2}"/>
+										   Foreground="#CCFFFFFF"/>
 							</Border>
 						</Button>
 					</Grid>

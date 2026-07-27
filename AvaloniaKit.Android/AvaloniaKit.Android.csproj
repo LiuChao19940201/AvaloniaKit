@@ -19,6 +19,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Content Include="..\..\..\资源文件\Aadroid项目打包命令.txt" Link="Resources\Aadroid项目打包命令.txt" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<!-- Android 平台专用包 -->
 		<PackageReference Include="Avalonia.Android" />
 		<PackageReference Include="sqlite-net-pcl" />

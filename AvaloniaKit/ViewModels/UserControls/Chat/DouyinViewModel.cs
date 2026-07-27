@@ -17,6 +17,10 @@ namespace AvaloniaKit.ViewModels.UserControls.Chat;
 // ══════════════════════════════════════════════════════════════════════════════
 public partial class DouyinViewModel : ObservableObject
 {
+    // ★ 覆盖层顶部预留（DIP）：44 = MainView 状态栏安全区，52 = 本页标题栏高度，
+    //   与 DouyinUserControl.axaml 的头部布局保持一致，使 WebView 恰好从标题栏下方开始
+    private const double TopOffsetDip = 44 + 52;
+
     [ObservableProperty] private bool _hasService = true;
 
     private bool _exitHooked = false;
@@ -32,7 +36,7 @@ public partial class DouyinViewModel : ObservableObject
             svc.ExitRequested += OnExitRequested;
             _exitHooked = true;
         }
-        svc.Show(DouyinHtml.Page);
+        svc.Show(DouyinHtml.Page, TopOffsetDip);
     }
 
     // HTML 内点击返回（可能来自 WebView 线程）→ 调度回 UI 线程执行返回

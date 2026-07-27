@@ -13,11 +13,11 @@ namespace AvaloniaKit.Desktop.Services;
 // ══════════════════════════════════════════════════════════════════════════════
 //  DesktopDouyinService — 抖音覆盖层（Windows Desktop 端）
 //  · WebView2 以 HWND 子窗口形式挂到 Avalonia 主窗口，Bounds 跟随客户区，
-//    NavigateToString 加载共享 HTML（视频/手势/操作栏全部在 HTML 内）
+//    ★ 顶部留出 topOffsetDip（状态栏安全区 + 标题栏），保留 Avalonia 标题栏
+//    与统一样式返回按钮；NavigateToString 加载共享 HTML
 //  · 环境参数放开自动播放限制（--autoplay-policy=no-user-gesture-required）
-//  · HTML 内返回按钮导航 app://exit → NavigationStarting 拦截触发 ExitRequested
 //  · 依赖系统 WebView2 Runtime（Win10/11 预装）；缺失时静默失败，
-//    页面仍可用 Avalonia 兜底返回按钮退出
+//    标题栏返回按钮仍可退出
 // ══════════════════════════════════════════════════════════════════════════════
 public class DesktopDouyinService : IDouyinService
 {
@@ -25,12 +25,14 @@ public class DesktopDouyinService : IDouyinService
     private CoreWebView2Controller? _controller;
     private Window? _window;
     private bool _showing;
+    private double _topOffsetDip;
 
     public event EventHandler? ExitRequested;
 
-    public void Show(string html)
+    public void Show(string html, double topOffsetDip)
     {
         _showing = true;
+        _topOffsetDip = topOffsetDip;
         _ = ShowAsync(html);
     }
 
@@ -123,8 +125,10 @@ public class DesktopDouyinService : IDouyinService
     {
         if (_controller == null || _window == null) return;
         double scale = _window.RenderScaling;
-        _controller.Bounds = new System.Drawing.Rectangle(0, 0,
+        // ★ 顶部下移：露出 Avalonia 标题栏（DIP × RenderScaling = 物理像素）
+        int top = (int)Math.Round(_topOffsetDip * scale);
+        _controller.Bounds = new System.Drawing.Rectangle(0, top,
             (int)(_window.ClientSize.Width * scale),
-            (int)(_window.ClientSize.Height * scale));
+            Math.Max(0, (int)(_window.ClientSize.Height * scale) - top));
     }
 }

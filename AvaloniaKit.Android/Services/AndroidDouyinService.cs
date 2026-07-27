@@ -1,6 +1,7 @@
 using Android.App;
 using Android.Views;
 using Android.Webkit;
+using Android.Widget;
 using AvaloniaKit.Services;
 using System;
 
@@ -8,10 +9,12 @@ namespace AvaloniaKit.Android.Services;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  AndroidDouyinService — 抖音覆盖层（Android 端）
-//  · 原生 WebView 通过 AddContentView 全屏覆盖在 Avalonia 视图之上，
-//    LoadDataWithBaseURL 加载共享 HTML（video 标签由系统 WebView 播放）
+//  · 原生 WebView 通过 AddContentView 覆盖在 Avalonia 视图之上，
+//    ★ 顶部留出 topOffsetDip（状态栏安全区 + 标题栏），保留 Avalonia 标题栏
+//    与统一样式返回按钮（与音乐模块一致）；DIP→px 用屏幕 density 换算，
+//    与 Avalonia 的 RenderScaling 同源，两层像素对齐
+//  · LoadDataWithBaseURL 加载共享 HTML（video 标签由系统 WebView 播放）
 //  · 允许自动播放（MediaPlaybackRequiresUserGesture = false）
-//  · HTML 内返回按钮导航 app://exit → WebViewClient 拦截触发 ExitRequested
 //  · 系统返回键/手势由 MainActivity 的 SubPageBackCallback 兜底（共享层
 //    DouyinViewModel.GoBack 会调用 Hide 移除本覆盖层）
 // ══════════════════════════════════════════════════════════════════════════════
@@ -24,7 +27,7 @@ public class AndroidDouyinService : IDouyinService
 
     public AndroidDouyinService(Activity activity) => _activity = activity;
 
-    public void Show(string html)
+    public void Show(string html, double topOffsetDip)
     {
         _activity.RunOnUiThread(() =>
         {
@@ -44,9 +47,15 @@ public class AndroidDouyinService : IDouyinService
             wv.LoadDataWithBaseURL("https://douyin.local/", html,
                 "text/html", "utf-8", null);
 
-            _activity.AddContentView(wv, new ViewGroup.LayoutParams(
+            // ★ 顶部下移：露出 Avalonia 标题栏（DIP × density = 物理像素）
+            float density = _activity.Resources?.DisplayMetrics?.Density ?? 1f;
+            var lp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MatchParent,
-                ViewGroup.LayoutParams.MatchParent));
+                ViewGroup.LayoutParams.MatchParent)
+            {
+                TopMargin = (int)Math.Round(topOffsetDip * density),
+            };
+            _activity.AddContentView(wv, lp);
             _webView = wv;
         });
     }

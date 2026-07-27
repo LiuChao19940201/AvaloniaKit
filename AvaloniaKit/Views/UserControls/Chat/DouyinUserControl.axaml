@@ -11,33 +11,58 @@
 		<vm:DouyinViewModel/>
 	</Design.DataContext>
 
-	<!-- 视频界面由平台 WebView 覆盖层呈现（共享 HTML）；
-	     本页为黑底承托 + 服务缺失时的占位提示 -->
-	<Grid Background="Black">
-		<StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-					Spacing="14" IsVisible="{Binding !HasService}">
-			<TextBlock Text="📵" FontSize="44" HorizontalAlignment="Center"/>
-			<TextBlock Text="当前平台暂不支持视频播放"
-					   FontSize="15" Foreground="#B3FFFFFF"
-					   HorizontalAlignment="Center"/>
-			<Button Content="返 回"
-					Command="{Binding GoBackCommand}"
-					HorizontalAlignment="Center"
-					Background="#FE2C55" Foreground="White"
-					CornerRadius="20" Padding="26,8" BorderThickness="0"/>
-		</StackPanel>
+	<UserControl.Styles>
+		<Style Selector="Button.icon-btn">
+			<Setter Property="Background"      Value="Transparent"/>
+			<Setter Property="Padding"         Value="8"/>
+			<Setter Property="BorderThickness" Value="0"/>
+		</Style>
+		<Style Selector="Button.icon-btn:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="Transparent"/>
+		</Style>
+	</UserControl.Styles>
 
-		<!-- 兜底返回按钮（覆盖层意外未显示时仍可退出） -->
-		<Button Command="{Binding GoBackCommand}"
-				Background="Transparent" BorderThickness="0"
-				Width="44" Height="44" Margin="6,14,0,0"
-				HorizontalAlignment="Left" VerticalAlignment="Top">
-			<Viewbox Width="20" Height="20">
-				<Canvas Width="24" Height="24">
-					<Path Data="M20 11H7.83L13.42 5.41 12 4 4 12 12 20 13.41 18.59 7.83 13H20V11Z"
-						  Fill="White"/>
-				</Canvas>
-			</Viewbox>
-		</Button>
-	</Grid>
+	<!-- 视频界面由平台 WebView 覆盖层呈现（共享 HTML，从标题栏以下开始）；
+	     顶部保留与音乐模块一致的 Avalonia 标题栏 + 统一样式返回按钮 -->
+	<DockPanel Background="Black">
+
+		<!-- ★ 标题栏（高度 52，与 DouyinViewModel.TopOffsetDip 对应） -->
+		<Border DockPanel.Dock="Top" Height="52"
+				Background="#161823"
+				BorderBrush="#22FFFFFF"
+				BorderThickness="0,0,0,0.8"
+				Padding="4,8">
+			<Grid ColumnDefinitions="44,*,44">
+				<Button Grid.Column="0" Classes="icon-btn"
+						Command="{Binding GoBackCommand}"
+						HorizontalAlignment="Center" VerticalAlignment="Center">
+					<Viewbox Width="20" Height="20">
+						<Canvas Width="24" Height="24">
+							<Path Data="M20 11H7.83L13.42 5.41 12 4 4 12 12 20 13.41 18.59 7.83 13H20V11Z"
+								  Fill="White"/>
+						</Canvas>
+					</Viewbox>
+				</Button>
+				<TextBlock Grid.Column="1" Text="抖音"
+						   FontSize="17" FontWeight="SemiBold" Foreground="White"
+						   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+			</Grid>
+		</Border>
+
+		<!-- 黑底承托 + 服务缺失时的占位提示 -->
+		<Grid Background="Black">
+			<StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+						Spacing="14" IsVisible="{Binding !HasService}">
+				<TextBlock Text="📵" FontSize="44" HorizontalAlignment="Center"/>
+				<TextBlock Text="当前平台暂不支持视频播放"
+						   FontSize="15" Foreground="#B3FFFFFF"
+						   HorizontalAlignment="Center"/>
+				<Button Content="返 回"
+						Command="{Binding GoBackCommand}"
+						HorizontalAlignment="Center"
+						Background="#FE2C55" Foreground="White"
+						CornerRadius="20" Padding="26,8" BorderThickness="0"/>
+			</StackPanel>
+		</Grid>
+	</DockPanel>
 </UserControl>
