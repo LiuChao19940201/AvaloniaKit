@@ -1,4 +1,5 @@
 using AvaloniaKit.Messages;
+using AvaloniaKit.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -17,11 +18,11 @@ namespace AvaloniaKit.ViewModels.UserControls.Chat;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  FundTrackerViewModel  （增强版）
-//  新增：
 //  · ActiveTab（0=发现  1=自选）
-//  · 发现 Tab：热门分类标签 + 分类基金排行榜
+//  · 发现 Tab：分类标签（矢量图标）+ 分类基金排行榜（5 分钟内存缓存，切回秒开）
+//  · 自选 Tab：净值并发刷新（Task.WhenAll，替代原串行逐只等待）
+//  · 自选码表经 ILocalDataService 持久化（三端 SQLite / localStorage），重开可恢复
 //  · DiscoverFundItem：可「+」一键添加到自选，可点击跳转图表
-//  原有自选、搜索、净值刷新逻辑完全不变
 // ══════════════════════════════════════════════════════════════════════════════
 public partial class FundTrackerViewModel : ObservableObject
 {
@@ -37,19 +38,13 @@ public partial class FundTrackerViewModel : ObservableObject
             "Referer", "https://fund.eastmoney.com/");
     }
 
-    // ── 持久化路径 ────────────────────────────────────────────────────────────
-    private static string? GetSaveFilePath()
-    {
-        try
-        {
-            string dir = AppContext.BaseDirectory;
-            if (string.IsNullOrEmpty(dir)) return null;
-            return Path.Combine(dir, "fund_watchlist.json");
-        }
-        catch { return null; }
-    }
+    // ── 持久化：ILocalDataService（三端 SQLite / localStorage），代码逗号拼接存储 ──
+    //    旧版写安装目录 fund_watchlist.json（AOT 发布后目录只读会静默失败），
+    //    首次读库为空时做一次性迁移
+    private const string WatchlistKey = "fund_watchlist";
 
     private readonly ObservableCollection<string> _watchCodes = new();
+    private Task? _watchlistLoadTask;
 
     // ── 状态属性 ──────────────────────────────────────────────────────────────
     [ObservableProperty] private bool _isLoading = false;
@@ -82,18 +77,32 @@ public partial class FundTrackerViewModel : ObservableObject
     public bool IsWatchlistActive => ActiveTab == 1;
 
     [RelayCommand] private void SwitchToDiscover() => ActiveTab = 0;
-    [RelayCommand] private void SwitchToWatchlist() { ActiveTab = 1; _ = DoRefreshAsync(); }
+
+    [RelayCommand]
+    private void SwitchToWatchlist()
+    {
+        ActiveTab = 1;
+        // 已有数据时不重复全量拉取（顶部有专门的刷新按钮），切 Tab 秒开
+        if (Funds.Count == 0 || IsOffline)
+            _ = DoRefreshAsync();
+    }
 
     // ════════════════════════════════════════════════════════════════════════
     //  发现 Tab —— 热门分类
     // ════════════════════════════════════════════════════════════════════════
     public ObservableCollection<DiscoverCategory> DiscoverCategories { get; } = new()
     {
-        new DiscoverCategory { Label = "🔥 热门",   FundType = "hot",   Index = 0, IsSelected = true  },
-        new DiscoverCategory { Label = "📈 股票型", FundType = "stock", Index = 1, IsSelected = false },
-        new DiscoverCategory { Label = "📊 指数型", FundType = "index", Index = 2, IsSelected = false },
-        new DiscoverCategory { Label = "🌍 QDII",   FundType = "qdii",  Index = 3, IsSelected = false },
-        new DiscoverCategory { Label = "💵 债券型", FundType = "bond",  Index = 4, IsSelected = false },
+        // 图标为 Material 风格 Path（与全局扁平矢量图标统一，替代原 emoji）
+        new DiscoverCategory { Label = "热门",   FundType = "hot",   Index = 0, IsSelected = true,
+            Icon = "M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z" },
+        new DiscoverCategory { Label = "股票型", FundType = "stock", Index = 1, IsSelected = false,
+            Icon = "M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" },
+        new DiscoverCategory { Label = "指数型", FundType = "index", Index = 2, IsSelected = false,
+            Icon = "M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z" },
+        new DiscoverCategory { Label = "QDII",   FundType = "qdii",  Index = 3, IsSelected = false,
+            Icon = "M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2 0-.68.07-1.35.16-2h4.68c.09.65.16 1.32.16 2 0 .68-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2 0-.68-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z" },
+        new DiscoverCategory { Label = "债券型", FundType = "bond",  Index = 4, IsSelected = false,
+            Icon = "M4 10v7h3v-7H4zm6 0v7h3v-7h-3zM2 22h19v-3H2v3zm14-12v7h3v-7h-3zm-4.5-9L2 6v2h19V6l-9.5-5z" },
     };
 
     [ObservableProperty]
@@ -109,6 +118,11 @@ public partial class FundTrackerViewModel : ObservableObject
 
     public ObservableCollection<DiscoverFundItem> DiscoverFunds { get; } = new();
 
+    // ── 发现榜单缓存：分类 → (条目, 拉取时间)，TTL 内切回分类直接命中不再请求 ──
+    private readonly Dictionary<string, (List<DiscoverFundItem> Items, DateTime At)> _discoverCache = new();
+    private static readonly TimeSpan DiscoverCacheTtl = TimeSpan.FromMinutes(5);
+    private int _discoverVersion;   // 防止慢响应覆盖后选分类的数据
+
     [RelayCommand]
     private void SelectCategory(int index)
     {
@@ -122,6 +136,22 @@ public partial class FundTrackerViewModel : ObservableObject
 
     private async Task LoadDiscoverAsync(string fundType)
     {
+        int version = ++_discoverVersion;
+
+        // 缓存命中：直接展示（仅同步 IsAdded 状态），切分类秒开
+        if (_discoverCache.TryGetValue(fundType, out var cached) &&
+            DateTime.Now - cached.At < DiscoverCacheTtl)
+        {
+            DiscoverFunds.Clear();
+            foreach (var f in cached.Items)
+            {
+                f.IsAdded = _watchCodes.Contains(f.Code);
+                DiscoverFunds.Add(f);
+            }
+            IsDiscoverLoading = false;
+            return;
+        }
+
         IsDiscoverLoading = true;
         DiscoverFunds.Clear();
 
@@ -148,6 +178,7 @@ public partial class FundTrackerViewModel : ObservableObject
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
             string raw = await _http.GetStringAsync(url, cts.Token);
+            if (version != _discoverVersion) return;   // 已切到其他分类，丢弃过期响应
 
             // 响应格式: var rankData = {datas:["code,abbr,name,...", ...], ...}
             var m = Regex.Match(raw, @"datas:\[(.+?)\]", RegexOptions.Singleline);
@@ -159,6 +190,7 @@ public partial class FundTrackerViewModel : ObservableObject
 
             // 拆分每条记录（逗号分隔的字符串，用引号括起）
             var seenCodes = new HashSet<string>();   // 去重
+            var loaded = new List<DiscoverFundItem>();
             var entries = Regex.Matches(m.Groups[1].Value, @"""([^""]+)""");
             foreach (Match entry in entries)
             {
@@ -177,7 +209,7 @@ public partial class FundTrackerViewModel : ObservableObject
                 if (!double.TryParse(navStr, out double nav)) nav = 0;
                 if (!double.TryParse(chgStr, out double chg)) chg = 0;
 
-                DiscoverFunds.Add(new DiscoverFundItem
+                loaded.Add(new DiscoverFundItem
                 {
                     Code = code,
                     Name = string.IsNullOrWhiteSpace(name) ? abbr : name,
@@ -187,16 +219,23 @@ public partial class FundTrackerViewModel : ObservableObject
                 });
             }
 
-            if (DiscoverFunds.Count == 0)
+            if (loaded.Count == 0)
+            {
                 LoadDiscoverFallback();
+                return;
+            }
+
+            foreach (var f in loaded)
+                DiscoverFunds.Add(f);
+            _discoverCache[fundType] = (loaded, DateTime.Now);   // 仅成功数据入缓存，fallback 不缓存
         }
         catch
         {
-            LoadDiscoverFallback();
+            if (version == _discoverVersion) LoadDiscoverFallback();
         }
         finally
         {
-            IsDiscoverLoading = false;
+            if (version == _discoverVersion) IsDiscoverLoading = false;
         }
     }
 
@@ -233,6 +272,7 @@ public partial class FundTrackerViewModel : ObservableObject
     private async Task AddDiscoverFund(DiscoverFundItem? item)
     {
         if (item is null) return;
+        await EnsureWatchlistLoadedAsync();   // 防止码表未加载完就写入导致覆盖丢数据
         if (_watchCodes.Contains(item.Code))
         {
             item.IsAdded = true;
@@ -264,11 +304,16 @@ public partial class FundTrackerViewModel : ObservableObject
 
     public FundTrackerViewModel()
     {
-        LoadWatchlist();
+        _ = EnsureWatchlistLoadedAsync();
     }
 
-    public void OnNavigatedTo()
+    public void OnNavigatedTo() => _ = OnNavigatedToAsync();
+
+    private async Task OnNavigatedToAsync()
     {
+        // 榜单 IsAdded 标记与自选刷新都依赖自选码表，先确保其加载完成
+        await EnsureWatchlistLoadedAsync();
+
         // 每次进入页面：发现Tab预加载，自选不重复刷新
         if (DiscoverFunds.Count == 0)
             _ = LoadDiscoverAsync(DiscoverCategories[SelectedCategoryIndex].FundType);
@@ -294,10 +339,12 @@ public partial class FundTrackerViewModel : ObservableObject
         IsLoading = true;
         IsOffline = false;
         StatusText = "加载中…";
-        Funds.Clear();
+
+        await EnsureWatchlistLoadedAsync();
 
         if (_watchCodes.Count == 0)
         {
+            Funds.Clear();
             IsLoading = false;
             StatusText = "自选列表为空，点击「+」添加基金";
             return;
@@ -306,10 +353,15 @@ public partial class FundTrackerViewModel : ObservableObject
         int ok = 0;
         try
         {
-            foreach (var code in _watchCodes.ToList())
+            // ★ 并发抓取全部自选（原 foreach 串行逐只等待，N 只基金 N 次顺序往返是慢的主因）；
+            //   抓完再整体替换列表，刷新期间旧数据保持可见
+            var codes = _watchCodes.ToList();
+            var items = await Task.WhenAll(codes.Select(c => FetchFundAsync(c, ct)));
+            ct.ThrowIfCancellationRequested();
+
+            Funds.Clear();
+            foreach (var item in items)
             {
-                ct.ThrowIfCancellationRequested();
-                var item = await FetchFundAsync(code, ct);
                 Funds.Add(item);
                 if (!item.IsMock) ok++;
             }
@@ -342,19 +394,13 @@ public partial class FundTrackerViewModel : ObservableObject
         {
             try
             {
-                string url = "https://fund.eastmoney.com/js/fundcode_search.js";
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                string raw = await _http.GetStringAsync(url, cts.Token);
-                var match = Regex.Match(raw, @"var r = (\[.+\])");
-                if (match.Success)
+                // ★ 全量基金代码表（数 MB）会话内只下载解析一次，后续搜索纯内存过滤
+                var table = await GetFundCodeTableAsync();
+                if (table is not null)
                 {
-                    using var doc = JsonDocument.Parse(match.Groups[1].Value);
                     int count = 0;
-                    foreach (var item in doc.RootElement.EnumerateArray())
+                    foreach (var (code, pinyin, name) in table)
                     {
-                        string code = item[0].GetString() ?? "";
-                        string pinyin = item[1].GetString() ?? "";
-                        string name = item[2].GetString() ?? "";
                         if (code.Contains(keyword) || name.Contains(keyword)
                             || pinyin.Contains(keyword, StringComparison.OrdinalIgnoreCase))
                         {
@@ -373,6 +419,38 @@ public partial class FundTrackerViewModel : ObservableObject
             await SearchByCodeAsync(keyword);
         }
         finally { IsSearching = false; }
+    }
+
+    // ── 基金代码表会话级缓存 ──
+    private static List<(string Code, string Pinyin, string Name)>? _fundCodeTable;
+    private static Task<List<(string, string, string)>?>? _fundCodeTableTask;
+
+    private static Task<List<(string, string, string)>?> GetFundCodeTableAsync()
+    {
+        if (_fundCodeTable is not null) return Task.FromResult<List<(string, string, string)>?>(_fundCodeTable);
+        // 失败的任务不复用，下次搜索重新发起
+        if (_fundCodeTableTask is { IsCompleted: false } running) return running;
+        return _fundCodeTableTask = DownloadFundCodeTableAsync();
+    }
+
+    private static async Task<List<(string, string, string)>?> DownloadFundCodeTableAsync()
+    {
+        string url = "https://fund.eastmoney.com/js/fundcode_search.js";
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        string raw = await _http.GetStringAsync(url, cts.Token);
+        var match = Regex.Match(raw, @"var r = (\[.+\])");
+        if (!match.Success) return null;
+
+        var list = new List<(string, string, string)>();
+        using var doc = JsonDocument.Parse(match.Groups[1].Value);
+        foreach (var item in doc.RootElement.EnumerateArray())
+        {
+            list.Add((item[0].GetString() ?? "",
+                      item[1].GetString() ?? "",
+                      item[2].GetString() ?? ""));
+        }
+        _fundCodeTable = list;
+        return list;
     }
 
     private async Task SearchByCodeAsync(string code)
@@ -406,6 +484,7 @@ public partial class FundTrackerViewModel : ObservableObject
     private async Task AddFund(SearchResultItem? item)
     {
         if (item is null) return;
+        await EnsureWatchlistLoadedAsync();   // 防止码表未加载完就写入导致覆盖丢数据
         if (_watchCodes.Contains(item.Code))
         {
             SearchStatus = $"{item.Code} 已在自选列表中";
@@ -443,25 +522,61 @@ public partial class FundTrackerViewModel : ObservableObject
 
     private void SaveWatchlist()
     {
-        string? path = GetSaveFilePath();
-        if (path is null) return;
-        try { File.WriteAllText(path, JsonSerializer.Serialize(_watchCodes.ToList())); }
-        catch { }
+        // 逗号拼接存库（fire-and-forget，与主题/头像持久化同模式）
+        var value = string.Join(",", _watchCodes);
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var service = ServiceLocator.LocalDataService;
+                if (service is null) return;
+                await service.SaveSettingAsync(WatchlistKey, value);
+            }
+            catch { }
+        });
     }
 
-    private void LoadWatchlist()
+    /// <summary>从数据库加载自选码表（只执行一次，后续调用等待同一任务）</summary>
+    private Task EnsureWatchlistLoadedAsync()
+        => _watchlistLoadTask ??= LoadWatchlistAsync();
+
+    private async Task LoadWatchlistAsync()
     {
-        string? path = GetSaveFilePath();
-        if (path is null || !File.Exists(path)) return;
         try
         {
-            var list = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(path));
-            if (list is null) return;
-            foreach (var code in list)
+            var service = ServiceLocator.LocalDataService;
+            if (service is null) return;
+
+            var saved = await service.LoadSettingAsync(WatchlistKey);
+
+            // 一次性迁移：库里没有时尝试读旧版 JSON 文件（安装目录），迁入后不再读文件
+            if (saved is null)
+            {
+                var legacy = TryLoadLegacyFile();
+                if (legacy.Count > 0)
+                {
+                    saved = string.Join(",", legacy);
+                    try { await service.SaveSettingAsync(WatchlistKey, saved); } catch { }
+                }
+            }
+            if (string.IsNullOrEmpty(saved)) return;
+
+            foreach (var code in saved.Split(',', StringSplitOptions.RemoveEmptyEntries))
                 if (!_watchCodes.Contains(code))
                     _watchCodes.Add(code);
         }
         catch { }
+    }
+
+    private static List<string> TryLoadLegacyFile()
+    {
+        try
+        {
+            string path = Path.Combine(AppContext.BaseDirectory, "fund_watchlist.json");
+            if (!File.Exists(path)) return new();
+            return JsonSerializer.Deserialize<List<string>>(File.ReadAllText(path)) ?? new();
+        }
+        catch { return new(); }
     }
 
     private async Task<FundItemViewModel> FetchFundAsync(string code, CancellationToken ct)
@@ -541,6 +656,8 @@ public partial class DiscoverCategory : ObservableObject
     public string Label { get; set; } = "";
     public string FundType { get; set; } = "";
     public int Index { get; set; } = 0;
+    /// <summary>Material 风格 24×24 矢量图标 Path 数据（替代 emoji，与全局图标风格统一）</summary>
+    public string Icon { get; set; } = "";
     [ObservableProperty] private bool _isSelected = false;
 }
 

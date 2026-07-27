@@ -1,4 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<!-- 显式拆开 Sdk.props / Sdk.targets 导入：WebView2 包的 targets 在 Sdk.targets 内部
+     （nuget.g.targets）被求值，只有把 Remove 放在 Sdk.targets 之后才能在求值期剔除 -->
+<Project>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -53,11 +56,13 @@
     <ProjectReference Include="..\AvaloniaKit\AvaloniaKit.csproj" />
   </ItemGroup>
 
-  <!-- WebView2 包无条件引入 Wpf/WinForms 封装层（本项目只用 Core），
-       剔除以消除 WindowsBase 版本冲突警告 MSB3277 -->
-  <Target Name="TrimWebView2UiRefs" BeforeTargets="ResolveAssemblyReferences">
-    <ItemGroup>
-      <Reference Remove="@(Reference)" Condition="$([System.String]::new('%(Reference.Identity)').Contains('WebView2.Wpf')) Or $([System.String]::new('%(Reference.Identity)').Contains('WebView2.WinForms'))" />
-    </ItemGroup>
-  </Target>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <!-- WebView2 包的 Common.targets 无条件注入 Wpf/WinForms 封装层引用（本项目只用 Core）。
+       在 Sdk.targets 之后求值期按路径剔除：解决方案资源管理器不再显示，也消除
+       WindowsBase 版本冲突警告 MSB3277（求值期条件不支持 %(Identity)，故用通配符） -->
+  <ItemGroup>
+    <Reference Remove="$(NuGetPackageRoot)microsoft.web.webview2\**\Microsoft.Web.WebView2.Wpf.dll" />
+    <Reference Remove="$(NuGetPackageRoot)microsoft.web.webview2\**\Microsoft.Web.WebView2.WinForms.dll" />
+  </ItemGroup>
 </Project>

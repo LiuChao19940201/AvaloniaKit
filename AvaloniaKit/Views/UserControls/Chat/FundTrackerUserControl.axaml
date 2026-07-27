@@ -36,7 +36,7 @@
             <Setter Property="Background"      Value="{DynamicResource SemiColorFillQuaternary}"/>
             <Setter Property="Foreground"      Value="{DynamicResource SemiColorText1}"/>
             <Setter Property="FontSize"        Value="12"/>
-            <Setter Property="Padding"         Value="12,5"/>
+            <Setter Property="Padding"         Value="12,6"/>
             <Setter Property="CornerRadius"    Value="14"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="MinHeight"       Value="0"/>
@@ -51,6 +51,13 @@
         </Style>
         <Style Selector="Button.cat-btn.active:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SemiColorPrimary}"/>
+        </Style>
+        <!-- 胶囊内矢量图标随选中态变色（与文字前景一致） -->
+        <Style Selector="Button.cat-btn Path">
+            <Setter Property="Fill" Value="{DynamicResource SemiColorText1}"/>
+        </Style>
+        <Style Selector="Button.cat-btn.active Path">
+            <Setter Property="Fill" Value="White"/>
         </Style>
 
     </UserControl.Styles>
@@ -172,13 +179,13 @@
                  ════════════════════════════════════════════════════════════ -->
             <DockPanel IsVisible="{Binding IsDiscoverActive}">
 
-                <!-- 分类标签横向滚动 -->
+                <!-- 分类标签横向滑动（滚动条隐藏，避免压在胶囊下方显得突兀） -->
                 <Border DockPanel.Dock="Top"
                         Background="{DynamicResource SemiColorBg0}"
                         BorderBrush="{DynamicResource SemiColorBorder}"
                         BorderThickness="0,0,0,0.6"
                         Padding="12,8">
-                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden"
                                   VerticalScrollBarVisibility="Disabled">
                         <ItemsControl ItemsSource="{Binding DiscoverCategories}">
                             <ItemsControl.ItemsPanel>
@@ -190,9 +197,17 @@
                                 <DataTemplate x:DataType="vm:DiscoverCategory">
                                     <Button Classes="cat-btn"
                                             Classes.active="{Binding IsSelected}"
-                                            Content="{Binding Label}"
                                             Command="{Binding $parent[ItemsControl].((vm:FundTrackerViewModel)DataContext).SelectCategoryCommand}"
-                                            CommandParameter="{Binding Index}"/>
+                                            CommandParameter="{Binding Index}">
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <Viewbox Width="13" Height="13" VerticalAlignment="Center">
+                                                <Canvas Width="24" Height="24">
+                                                    <Path Data="{Binding Icon}"/>
+                                                </Canvas>
+                                            </Viewbox>
+                                            <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
