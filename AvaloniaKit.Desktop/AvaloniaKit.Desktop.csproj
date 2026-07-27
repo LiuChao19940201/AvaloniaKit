@@ -19,6 +19,9 @@
     <InvariantGlobalization>false</InvariantGlobalization>
     <OptimizationPreference>Speed</OptimizationPreference>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\..\资源文件\Avalonia.Desktop项目发布在Linux上运行.doc" Link="Avalonia.Desktop项目发布在Linux上运行.doc" />
+  </ItemGroup>
 
   <!-- ★ 防裁剪保根：sqlite-net 是反射 ORM，实体类的属性 getter/setter 与
        SQLite-net 自身的映射元数据被裁剪后会导致存库静默失效 -->
@@ -54,8 +57,7 @@
        剔除以消除 WindowsBase 版本冲突警告 MSB3277 -->
   <Target Name="TrimWebView2UiRefs" BeforeTargets="ResolveAssemblyReferences">
     <ItemGroup>
-      <Reference Remove="@(Reference)"
-                 Condition="$([System.String]::new('%(Reference.Identity)').Contains('WebView2.Wpf')) Or $([System.String]::new('%(Reference.Identity)').Contains('WebView2.WinForms'))" />
+      <Reference Remove="@(Reference)" Condition="$([System.String]::new('%(Reference.Identity)').Contains('WebView2.Wpf')) Or $([System.String]::new('%(Reference.Identity)').Contains('WebView2.WinForms'))" />
     </ItemGroup>
   </Target>
 </Project>
