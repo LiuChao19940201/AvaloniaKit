@@ -334,7 +334,7 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBox Grid.Column="0"
                                      Text="{Binding SearchText}"
-                                     Watermark="输入基金名称或代码…"
+                                     PlaceholderText="输入基金名称或代码…"
                                      FontSize="14" Padding="10,8"
                                      CornerRadius="6 0 0 6">
                                 <TextBox.KeyBindings>

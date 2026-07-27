@@ -1,6 +1,5 @@
 ﻿using Avalonia;
 using Avalonia.Media;
-using Avalonia.ReactiveUI;
 using AvaloniaKit.Desktop.Data;
 using AvaloniaKit.Desktop.Services;
 using AvaloniaKit.Services;
@@ -44,7 +43,6 @@ namespace AvaloniaKit.Desktop
                         new FontFallback { FontFamily = new FontFamily("Microsoft YaHei") }
                     ]
                 })
-                .LogToTrace()
-                .UseReactiveUI();
+                .LogToTrace();
     }
 }

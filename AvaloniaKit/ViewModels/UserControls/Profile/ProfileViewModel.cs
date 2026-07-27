@@ -81,7 +81,8 @@ public partial class ProfileViewModel : ObservableObject
             if (dataService is not null)
             {
                 using var saveStream = new MemoryStream();
-                AvatarBitmap.Save(saveStream); // 编码为 PNG
+                // Avalonia 12：旧 Save(Stream, int?) 已过时，改用 BitmapEncoderOptions 重载
+                AvatarBitmap.Save(saveStream, PngBitmapEncoderOptions.Default); // 编码为 PNG
                 await dataService.SaveAvatarAsync(saveStream.ToArray());
             }
         }

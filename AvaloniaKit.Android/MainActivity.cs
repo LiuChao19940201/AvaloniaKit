@@ -7,7 +7,6 @@ using AndroidX.Core.View;
 using Avalonia;
 using Avalonia.Android;
 using Avalonia.Media;
-using Avalonia.ReactiveUI;
 using AvaloniaKit.Android.Data;
 using AvaloniaKit.Android.Services;
 using AvaloniaKit.Services;
@@ -24,8 +23,13 @@ namespace AvaloniaKit.Android
         Icon = "@drawable/icon",
         MainLauncher = true,
         ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
-    public class MainActivity : AvaloniaMainActivity<App>
+    public class MainActivity : AvaloniaMainActivity
     {
+        // ★ Avalonia 12：AvaloniaMainActivity<TApp> 泛型基类已移除，
+        //   改为重写 CreateAppBuilder 指定 App 并显式 UseAndroid()
+        protected override AppBuilder CreateAppBuilder()
+            => AppBuilder.Configure<App>().UseAndroid();
+
         protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
         {
             return base.CustomizeAppBuilder(builder)
@@ -45,8 +49,7 @@ namespace AvaloniaKit.Android
                                 "avares://AvaloniaKit/Assets/Fonts/NotoColorEmoji-emojicompat.ttf#Noto Color Emoji")
                         },
                     ]
-                })
-                .UseReactiveUI();
+                });
         }
 
         protected override void OnCreate(Bundle? savedInstanceState)

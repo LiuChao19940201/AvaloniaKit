@@ -2,49 +2,55 @@
 
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <AvaloniaVersion>11.3.12</AvaloniaVersion>
-    <SemiAvaloniaVersion>11.3.7.3</SemiAvaloniaVersion>
-    <UrsaVersion>1.15.0</UrsaVersion>
-    <SkiaSharpVersion>3.119.1</SkiaSharpVersion>
+    <!-- ★ 允许中央包管理使用浮动版本（CPM 默认禁止 * 写法，必须显式开启） -->
+    <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
 
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       浮动版本说明：
+         *    = 始终解析为「最新稳定发布版」（本文件采用）
+         *-*  = 包含预览版在内的最新版（不采用）
+       已随 Avalonia 12 移除的包：
+         Avalonia.Diagnostics —— v12 起官方停发（DevTools 独立化），最高 11.3.18，
+                                  与 12 内核版本冲突，必须删除
+         Avalonia.ReactiveUI  —— v12 起移交 ReactiveUI 团队（改名 ReactiveUI.Avalonia），
+                                  项目已改用 CommunityToolkit.Mvvm，不再需要
+       ═══════════════════════════════════════════════════════════════════════ -->
   <ItemGroup>
-    <!-- ═══ Avalonia ═══ -->
-    <PackageVersion Include="Avalonia"                       Version="$(AvaloniaVersion)" />
-    <PackageVersion Include="Avalonia.Desktop"               Version="$(AvaloniaVersion)" />
-    <PackageVersion Include="Avalonia.Android"               Version="$(AvaloniaVersion)" />
-    <PackageVersion Include="Avalonia.Browser"               Version="$(AvaloniaVersion)" />
-    <PackageVersion Include="Avalonia.iOS"                   Version="$(AvaloniaVersion)" />
-    <PackageVersion Include="Avalonia.Fonts.Inter"           Version="$(AvaloniaVersion)" />
-    <PackageVersion Include="Avalonia.ReactiveUI"            Version="11.3.8" />
-    <PackageVersion Include="Avalonia.Diagnostics"           Version="$(AvaloniaVersion)" />
+    <!-- ═══ Avalonia（12.x 最新稳定版） ═══ -->
+    <PackageVersion Include="Avalonia"                       Version="*" />
+    <PackageVersion Include="Avalonia.Desktop"               Version="*" />
+    <PackageVersion Include="Avalonia.Android"               Version="*" />
+    <PackageVersion Include="Avalonia.Browser"               Version="*" />
+    <PackageVersion Include="Avalonia.iOS"                   Version="*" />
+    <PackageVersion Include="Avalonia.Fonts.Inter"           Version="*" />
 
-    <!-- ═══ UI 框架 ═══ -->
-    <PackageVersion Include="Semi.Avalonia"                  Version="$(SemiAvaloniaVersion)" />
-    <PackageVersion Include="Irihi.Ursa"                     Version="$(UrsaVersion)" />
-    <PackageVersion Include="Irihi.Ursa.Themes.Semi"         Version="$(UrsaVersion)" />
+    <!-- ═══ UI 框架（Semi 12.x / Ursa 2.x 适配 Avalonia 12） ═══ -->
+    <PackageVersion Include="Semi.Avalonia"                  Version="*" />
+    <PackageVersion Include="Irihi.Ursa"                     Version="*" />
+    <PackageVersion Include="Irihi.Ursa.Themes.Semi"         Version="*" />
 
     <!-- ═══ MVVM ═══ -->
-    <PackageVersion Include="CommunityToolkit.Mvvm"          Version="8.4.0" />
+    <PackageVersion Include="CommunityToolkit.Mvvm"          Version="*" />
 
     <!-- ═══ SQLite（Desktop + Android） ═══ -->
-    <PackageVersion Include="sqlite-net-pcl"                 Version="1.11.285" />
-    <PackageVersion Include="SQLitePCLRaw.bundle_green"      Version="2.1.11" />
+    <PackageVersion Include="sqlite-net-pcl"                 Version="*" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_green"      Version="*" />
     <!-- 显式覆盖 bundle_green 传递依赖的漏洞版本（NU1903 / GHSA-2m69-gcr7-jv3q） -->
-    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3"     Version="2.1.12" />
-    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3.android" Version="2.1.12" />
+    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3"     Version="*" />
+    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3.android" Version="*" />
 
     <!-- ═══ Desktop 专用（显式覆盖 Avalonia.Desktop 传递依赖的漏洞版本） ═══ -->
-    <PackageVersion Include="Tmds.DBus.Protocol"             Version="0.21.3" />
+    <PackageVersion Include="Tmds.DBus.Protocol"             Version="*" />
     <!-- Desktop 音频播放（Windows：MediaFoundation 流式 + WaveOut 输出） -->
-    <PackageVersion Include="NAudio"                         Version="2.2.1" />
+    <PackageVersion Include="NAudio"                         Version="*" />
     <!-- Desktop 抖音视频覆盖层（Windows WebView2，HWND 子窗口承载共享 HTML） -->
-    <PackageVersion Include="Microsoft.Web.WebView2"         Version="1.0.2903.40" />
+    <PackageVersion Include="Microsoft.Web.WebView2"         Version="*" />
 
     <!-- ═══ Android 专用 ═══ -->
-    <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0.2" />
-    <PackageVersion Include="SkiaSharp"                      Version="$(SkiaSharpVersion)" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Android"  Version="$(SkiaSharpVersion)" />
+    <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="*" />
+    <PackageVersion Include="SkiaSharp"                      Version="*" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Android" Version="*" />
   </ItemGroup>
 
 </Project>

@@ -61,7 +61,8 @@ public partial class NeteasePlayerUserControl : UserControl
             RoutingStrategies.Tunnel, handledEventsToo: true);
 
         // ★ 点击歌词行→跳转到对应时间播放（先于 CenterPanel 的切换视图）
-        LyricItems.AddHandler(Gestures.TappedEvent, OnLyricTapped);
+        // Avalonia 12：TappedEvent 从 Gestures（已转为 internal）移到 InputElement
+        LyricItems.AddHandler(TappedEvent, OnLyricTapped);
 
         // 进度条：按下进入拖动态（拖动中时间实时预览），松手后才 Seek
         ProgressSlider.AddHandler(PointerPressedEvent, OnSliderPressed,

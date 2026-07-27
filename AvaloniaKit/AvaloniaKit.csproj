@@ -13,8 +13,8 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
-    <PackageReference Include="Avalonia.ReactiveUI" />
-    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" />
+    <!-- Avalonia 12 已移除 Avalonia.Diagnostics（DevTools 独立化）与
+         Avalonia.ReactiveUI（移交 ReactiveUI 团队）；项目统一用 CommunityToolkit.Mvvm -->
     <PackageReference Include="Irihi.Ursa" />
     <PackageReference Include="Irihi.Ursa.Themes.Semi" />
     <PackageReference Include="Semi.Avalonia" />

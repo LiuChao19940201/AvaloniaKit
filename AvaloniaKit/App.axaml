@@ -4,7 +4,7 @@
 			 x:Class="AvaloniaKit.App"
 			 xmlns:semi="https://irihi.tech/semi"
 			 xmlns:cvt="using:AvaloniaKit.Tools.Converters"
-			 xmlns:u-semi="https://irihi.tech/ursa/themes/semi"
+			 xmlns:u-semi="clr-namespace:Ursa.Themes.Semi;assembly=Ursa.Themes.Semi"
 			 RequestedThemeVariant="Default">
 
 	<Application.Resources>
@@ -15,7 +15,8 @@
 
 	<Application.Styles>
 		<semi:SemiTheme Locale="zh-cn" />
-		<u-semi:SemiTheme Locale="zh-CN"/>
+		<!-- Ursa 2.x（Avalonia 12）：旧 SemiTheme 已过时，改用 UrsaSemiTheme -->
+		<u-semi:UrsaSemiTheme Locale="zh-CN"/>
 		<semi:SemiPopupAnimations />
 
 		<!--控件缩放-->

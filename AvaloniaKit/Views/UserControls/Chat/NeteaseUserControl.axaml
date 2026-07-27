@@ -335,7 +335,7 @@
 					<Grid ColumnDefinitions="*,Auto">
 						<TextBox Grid.Column="0"
 								 Text="{Binding SearchKeyword}"
-								 Watermark="搜索歌曲、歌手…"
+								 PlaceholderText="搜索歌曲、歌手…"
 								 FontSize="14" Padding="12,9"
 								 CornerRadius="20 0 0 20">
 							<TextBox.KeyBindings>

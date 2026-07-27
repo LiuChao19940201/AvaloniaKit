@@ -1,7 +1,6 @@
 ﻿using Avalonia;
 using Avalonia.Browser;
 using Avalonia.Media;
-using Avalonia.ReactiveUI;
 using AvaloniaKit;
 using AvaloniaKit.Browser.Services;
 using AvaloniaKit.Services;
@@ -44,7 +43,6 @@ internal sealed partial class Program
                     },
                 ]
             })
-            .UseReactiveUI()
             .StartBrowserAppAsync("out");
     }
 
