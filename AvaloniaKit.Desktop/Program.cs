@@ -3,6 +3,7 @@ using Avalonia.Media;
 using AvaloniaKit.Desktop.Data;
 using AvaloniaKit.Desktop.Services;
 using AvaloniaKit.Services;
+using AvaloniaKit.Tools.Helper;
 using System;
 using System.IO;
 
@@ -20,6 +21,9 @@ namespace AvaloniaKit.Desktop
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "AvaloniaKit");
             Directory.CreateDirectory(appDataPath);
+
+            // ★ 启动日志（exe 同级 Logs 目录）：自动判定并记录 JIT / AOT 编译模式
+            LoggerHelper.Instance.WriteStartup("Desktop");
 
             ServiceLocator.LocalDataService = new SqliteLocalDataService(
                 Path.Combine(appDataPath, "app.db"));

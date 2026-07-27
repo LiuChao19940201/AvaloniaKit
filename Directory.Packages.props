@@ -49,6 +49,9 @@
 
     <!-- ═══ Android 专用 ═══ -->
     <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="*" />
+    <!-- 显式对齐 core-ktx 与 core：新版 androidx.core 已合入 ktx 类，
+         传递依赖的旧版 core-ktx 会导致 D8 重复类编译失败 -->
+    <PackageVersion Include="Xamarin.AndroidX.Core.Core.Ktx" Version="*" />
     <PackageVersion Include="SkiaSharp"                      Version="*" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Android" Version="*" />
   </ItemGroup>

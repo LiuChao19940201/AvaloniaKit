@@ -4,15 +4,11 @@ using Android.Content.PM;
 using Android.OS;
 using AndroidX.Activity;
 using AndroidX.Core.View;
-using Avalonia;
 using Avalonia.Android;
-using Avalonia.Media;
-using AvaloniaKit.Android.Data;
 using AvaloniaKit.Android.Services;
 using AvaloniaKit.Services;
 using AvaloniaKit.ViewModels.Windows;
 using System;
-using System.IO;
 using Color = Android.Graphics.Color;
 
 namespace AvaloniaKit.Android
@@ -25,42 +21,13 @@ namespace AvaloniaKit.Android
         ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
     public class MainActivity : AvaloniaMainActivity
     {
-        // ★ Avalonia 12：AvaloniaMainActivity<TApp> 泛型基类已移除，
-        //   改为重写 CreateAppBuilder 指定 App 并显式 UseAndroid()
-        protected override AppBuilder CreateAppBuilder()
-            => AppBuilder.Configure<App>().UseAndroid();
-
-        protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
-        {
-            return base.CustomizeAppBuilder(builder)
-                .WithInterFont()
-                .With(new FontManagerOptions
-                {
-                    FontFallbacks =
-                    [
-                        new FontFallback
-                        {
-                            FontFamily = new FontFamily(
-                                "avares://AvaloniaKit/Assets/Fonts/AlibabaPuHuiTi-3-55-Regular.ttf#Alibaba PuHuiTi 3.0")
-                        },
-                        new FontFallback
-                        {
-                            FontFamily = new FontFamily(
-                                "avares://AvaloniaKit/Assets/Fonts/NotoColorEmoji-emojicompat.ttf#Noto Color Emoji")
-                        },
-                    ]
-                });
-        }
-
+        // ★ Avalonia 12：AppBuilder 构建/字体定制已上移到 MainApplication
+        //   （AvaloniaAndroidApplication<App>），本 Activity 只负责 Activity 级服务与系统交互
         protected override void OnCreate(Bundle? savedInstanceState)
         {
-            // ═══ 必须在 base.OnCreate() 之前注册! ═══
-            SQLitePCL.Batteries_V2.Init();
-            var dbPath = Path.Combine(FilesDir!.AbsolutePath, "app.db");
-            ServiceLocator.LocalDataService   = new SqliteLocalDataService(dbPath);
+            // ═══ Activity 相关服务：必须在 base.OnCreate()（创建视图）之前注册! ═══
             ServiceLocator.DeviceService      = new AndroidDeviceService(this);
             ServiceLocator.ImagePickerService = new AndroidImagePickerService(this);
-            ServiceLocator.AudioService       = new AndroidAudioService();
             ServiceLocator.DouyinService      = new AndroidDouyinService(this);
 
             base.OnCreate(savedInstanceState);

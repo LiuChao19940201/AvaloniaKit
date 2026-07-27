@@ -30,6 +30,8 @@
 		<!-- 显式引用以覆盖 bundle_green 传递依赖的漏洞版本（NU1903） -->
 		<PackageReference Include="SQLitePCLRaw.lib.e_sqlite3.android" />
 		<PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" />
+		<!-- 显式引用以对齐 core-ktx 与 core 版本（避免 D8 重复类） -->
+		<PackageReference Include="Xamarin.AndroidX.Core.Core.Ktx" />
 		<PackageReference Include="SkiaSharp" />
 		<PackageReference Include="SkiaSharp.NativeAssets.Android" />
 	</ItemGroup>

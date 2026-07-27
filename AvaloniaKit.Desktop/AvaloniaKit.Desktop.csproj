@@ -7,10 +7,25 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
   </PropertyGroup>
 
-  <!-- 只在发布时才启用 AOT -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Release' and '$(PublishProtocol)' != ''">
+  <!-- ═══ NativeAOT ═══
+       · PublishAot 只在 dotnet publish 时触发原生编译；日常 F5/build 仍是 JIT，
+         但会启用 AOT 兼容性分析器，提前在编译期暴露不兼容代码
+       · 旧写法 '$(PublishProtocol)' != '' 只有 VS 发布向导会满足，
+         命令行 dotnet publish 永远不触发，已更正
+       · 发布命令：dotnet publish -c Release -r win-x64（需安装 VS C++ 生成工具） -->
+  <PropertyGroup>
     <PublishAot>true</PublishAot>
+    <!-- AOT 产物体积/启动优化：不变量全球化 + 服务器GC关闭 -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <OptimizationPreference>Speed</OptimizationPreference>
   </PropertyGroup>
+
+  <!-- ★ 防裁剪保根：sqlite-net 是反射 ORM，实体类的属性 getter/setter 与
+       SQLite-net 自身的映射元数据被裁剪后会导致存库静默失效 -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="AvaloniaKit" />
+    <TrimmerRootAssembly Include="SQLite-net" />
+  </ItemGroup>
 
   <PropertyGroup>
     <ApplicationManifest>app.manifest</ApplicationManifest>

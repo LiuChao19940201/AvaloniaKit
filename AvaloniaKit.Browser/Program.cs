@@ -4,6 +4,7 @@ using Avalonia.Media;
 using AvaloniaKit;
 using AvaloniaKit.Browser.Services;
 using AvaloniaKit.Services;
+using AvaloniaKit.Tools.Helper;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
@@ -24,6 +25,10 @@ internal sealed partial class Program
         ServiceLocator.ImagePickerService = new BrowserImagePickerService();
         ServiceLocator.AudioService = new BrowserAudioService();
         ServiceLocator.DouyinService = new BrowserDouyinService();
+
+        // ★ 启动日志：WASM 虚拟文件系统仅内存留存，主要看浏览器控制台镜像输出；
+        //   自动判定并记录解释执行 / AOT 编译模式
+        LoggerHelper.Instance.WriteStartup("Browser");
 
         await BuildAvaloniaApp()
             .WithInterFont()
