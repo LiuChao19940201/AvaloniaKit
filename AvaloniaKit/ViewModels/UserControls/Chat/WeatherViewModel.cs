@@ -131,7 +131,13 @@ public partial class WeatherViewModel : ObservableObject
                 "precipitation_probability_max" +
                 "&timezone=Asia%2FShanghai&forecast_days=7";
 
-            string raw = await _http.GetStringAsync(url, ct);
+            string raw;
+            // 显式 12 秒超时（与基金模块一致），避免弱网下依赖 HttpClient 默认超时导致长时间无反馈
+            using (var reqCts = CancellationTokenSource.CreateLinkedTokenSource(ct))
+            {
+                reqCts.CancelAfter(TimeSpan.FromSeconds(12));
+                raw = await _http.GetStringAsync(url, reqCts.Token);
+            }
             if (ct.IsCancellationRequested) return;
 
             using var doc = JsonDocument.Parse(raw);
@@ -144,7 +150,8 @@ public partial class WeatherViewModel : ObservableObject
             UpdateTime = $"更新于 {DateTime.Now:HH:mm}";
             _lastLoaded = DateTime.UtcNow;
         }
-        catch (OperationCanceledException) { }
+        // 用户取消（切城市/重进页面）静默；请求超时按失败提示
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch
         {
             StatusText = "天气加载失败，请检查网络后下拉刷新";

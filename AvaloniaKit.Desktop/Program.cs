@@ -30,6 +30,8 @@ namespace AvaloniaKit.Desktop
             ServiceLocator.ImagePickerService = new DesktopImagePickerService();
             ServiceLocator.AudioService = new DesktopAudioService();
             ServiceLocator.DouyinService = new DesktopDouyinService();
+            // 设备反馈（游戏音效/震动三端一致，此前 Desktop 缺失导致 Tetris 无音效）
+            ServiceLocator.DeviceService = new DesktopDeviceService();
 
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }

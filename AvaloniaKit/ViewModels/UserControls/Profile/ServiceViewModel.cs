@@ -26,6 +26,12 @@ public partial class ServiceViewModel : ObservableObject
             return;
         }
 
+        ExecuteCore(featureName, action);
+    }
+
+    /// <summary>无平台门禁：音效/震动三端均有实现（Desktop NAudio / Browser WebAudio）</summary>
+    private void ExecuteCore(string featureName, Action action)
+    {
         if (ServiceLocator.DeviceService is null)
         {
             StatusMessage = $"⚠️ [{featureName}] 设备服务未注册";
@@ -71,7 +77,8 @@ public partial class ServiceViewModel : ObservableObject
     [RelayCommand]
     private void Vibrate()
     {
-        ExecuteOnMobile("震动", () =>
+        // 三端可用：Android 马达 / Browser navigator.vibrate / Desktop 无硬件静默
+        ExecuteCore("震动", () =>
         {
             ServiceLocator.DeviceService!.Vibrate();
             StatusMessage = "✅ 震动已触发";
@@ -91,7 +98,8 @@ public partial class ServiceViewModel : ObservableObject
     [RelayCommand]
     private void PlaySound()
     {
-        ExecuteOnMobile("音效", () =>
+        // 三端可用：Android ToneGenerator / Desktop NAudio / Browser WebAudio
+        ExecuteCore("音效", () =>
         {
             ServiceLocator.DeviceService!.PlaySound();
             StatusMessage = "✅ 音效已播放";

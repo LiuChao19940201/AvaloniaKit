@@ -106,3 +106,29 @@ export function audioSetCallbacks(onProgress, onEnded, onError, onCanPlay) {
     _onCanPlay  = onCanPlay;   // ★
     ensureAudio();
 }
+
+// ─── 设备反馈（BrowserDeviceService 用，与移动端音效/震动三端一致）────────────
+
+let _beepCtx = null;
+
+// WebAudio 振荡器合成短促提示音（对齐 Android ToneGenerator PropBeep）
+export function deviceBeep() {
+    try {
+        _beepCtx = _beepCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const osc  = _beepCtx.createOscillator();
+        const gain = _beepCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.15, _beepCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, _beepCtx.currentTime + 0.12);
+        osc.connect(gain).connect(_beepCtx.destination);
+        osc.start();
+        osc.stop(_beepCtx.currentTime + 0.12);
+    } catch (e) { /* 音频上下文被策略拦截时静默 */ }
+}
+
+// navigator.vibrate：移动端浏览器有效，桌面浏览器静默无效
+export function deviceVibrate(ms) {
+    try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { }
+}
+

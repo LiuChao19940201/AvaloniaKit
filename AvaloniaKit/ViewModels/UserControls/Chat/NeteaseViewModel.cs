@@ -80,10 +80,19 @@ public partial class NeteaseViewModel : ObservableObject,
     [ObservableProperty] private int _selectedRankIndex = 0;
     public ObservableCollection<NeteaseSongItem> RankSongs { get; } = new();
 
+    // ── 数据新鲜度：离线兜底/超期数据在下次进入时自动重试真实接口 ──────────
+    //    修复：兜底填充后列表非空，原“有数据就跳过加载”导致会话内永远卡在
+    //    固定离线歌单，看起来“每天内容都一样”
+    private bool _recommendIsFallback;
+    private bool _rankIsFallback;
+    private DateTime _recommendLoadedAt = DateTime.MinValue;
+    private static readonly TimeSpan RefreshTtl = TimeSpan.FromMinutes(30);
+
     [RelayCommand]
     private void SelectRank(int index)
     {
-        if (index == SelectedRankIndex && RankSongs.Count > 0) return;
+        // 同榜单且已有“真实”数据才跳过；离线兜底数据允许重试
+        if (index == SelectedRankIndex && RankSongs.Count > 0 && !_rankIsFallback) return;
         for (int i = 0; i < RankCategories.Count; i++)
             RankCategories[i].IsSelected = i == index;
         SelectedRankIndex = index;
@@ -122,7 +131,9 @@ public partial class NeteaseViewModel : ObservableObject,
 
     public void OnNavigatedTo()
     {
-        if (RecommendSongs.Count == 0)
+        // 空列表 / 离线兜底 / 数据超过 TTL → 重新拉取真实接口
+        if (RecommendSongs.Count == 0 || _recommendIsFallback ||
+            DateTime.Now - _recommendLoadedAt > RefreshTtl)
             _ = LoadRecommendAsync();
         SyncPlaybackState();
     }
@@ -255,12 +266,19 @@ public partial class NeteaseViewModel : ObservableObject,
             // 接口失效时退回热歌榜，再不行用离线数据
             if (RecommendSongs.Count == 0)
                 await LoadPlaylistAsync(RecommendSongs, 3778678, 30);
-            if (RecommendSongs.Count == 0)
+            _recommendIsFallback = RecommendSongs.Count == 0;
+            if (_recommendIsFallback)
+            {
                 LoadRecommendFallback();
-            StatusText = $"已加载 {RecommendSongs.Count} 首";
+                StatusText = "已加载（离线数据）";
+            }
+            else StatusText = $"已加载 {RecommendSongs.Count} 首";
+            _recommendLoadedAt = DateTime.Now;
         }
         catch
         {
+            _recommendIsFallback = true;
+            _recommendLoadedAt = DateTime.Now;
             LoadRecommendFallback();
             StatusText = "已加载（离线数据）";
         }
@@ -310,9 +328,10 @@ public partial class NeteaseViewModel : ObservableObject,
         {
             long listId = RankCategories[SelectedRankIndex].ListId;
             await LoadPlaylistAsync(RankSongs, listId, 20);
-            if (RankSongs.Count == 0) LoadRankFallback();
+            _rankIsFallback = RankSongs.Count == 0;
+            if (_rankIsFallback) LoadRankFallback();
         }
-        catch { LoadRankFallback(); }
+        catch { _rankIsFallback = true; LoadRankFallback(); }
         finally { IsRankLoading = false; }
     }
 

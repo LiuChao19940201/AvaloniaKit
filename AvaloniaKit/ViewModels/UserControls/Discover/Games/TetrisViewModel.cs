@@ -111,11 +111,8 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        //移动端音效
-        if (OperatingSystem.IsAndroid() || OperatingSystem.IsIOS())
-        {
-            ServiceLocator.DeviceService!.PlaySound();
-        }
+        //按键音效（三端一致：服务未注册时静默跳过）
+        ServiceLocator.DeviceService?.PlaySound();
 
         // 从游戏循环线程更新 Cells 时
         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -133,10 +130,7 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        if (OperatingSystem.IsAndroid() || OperatingSystem.IsIOS())
-        {
-            ServiceLocator.DeviceService!.PlaySound();
-        }
+        ServiceLocator.DeviceService?.PlaySound();
 
         // 从游戏循环线程更新 Cells 时
         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -154,10 +148,7 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        if (OperatingSystem.IsAndroid() || OperatingSystem.IsIOS())
-        {
-            ServiceLocator.DeviceService!.PlaySound();
-        }
+        ServiceLocator.DeviceService?.PlaySound();
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -179,10 +170,7 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        if (OperatingSystem.IsAndroid() || OperatingSystem.IsIOS())
-        {
-            ServiceLocator.DeviceService!.PlaySound();
-        }
+        ServiceLocator.DeviceService?.PlaySound();
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -206,10 +194,7 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        if (OperatingSystem.IsAndroid() || OperatingSystem.IsIOS())
-        {
-            ServiceLocator.DeviceService!.PlaySound();
-        }
+        ServiceLocator.DeviceService?.PlaySound();
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -296,12 +281,9 @@ public partial class TetrisViewModel : ObservableObject
             }
             if (!full) continue;
 
-            //移动端震动和音效
-            if (OperatingSystem.IsAndroid() || OperatingSystem.IsIOS())
-            {
-                ServiceLocator.DeviceService!.Vibrate();
-                ServiceLocator.DeviceService!.PlaySound();
-            }
+            //消行震动和音效（三端一致：桌面/Web 端 Vibrate 为空实现，静默跳过）
+            ServiceLocator.DeviceService?.Vibrate();
+            ServiceLocator.DeviceService?.PlaySound();
 
             // 向下移动上方所有行
             for (int rr = r; rr > 0; rr--)

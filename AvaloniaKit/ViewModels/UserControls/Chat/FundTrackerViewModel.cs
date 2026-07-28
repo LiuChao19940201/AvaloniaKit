@@ -1,5 +1,6 @@
 using AvaloniaKit.Messages;
 using AvaloniaKit.Services;
+using AvaloniaKit.Tools.Extensions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -168,13 +169,8 @@ public partial class FundTrackerViewModel : ObservableObject
                 _ => "0"     // hot / 全部
             };
 
-            // 按近1月涨幅排序，取前20条
-            string url = $"https://fund.eastmoney.com/data/rankhandler.aspx" +
-                         $"?op=ph&dt=kf&ft={ft}&rs=&gs=0&sc=yzf&st=desc" +
-                         $"&sd={DateTime.Today.AddMonths(-1):yyyy-MM-dd}" +
-                         $"&ed={DateTime.Today:yyyy-MM-dd}" +
-                         $"&qdii=&tabSubtype=,,,,,&pi=1&pn=20&dx=1" +
-                         $"&v={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+            // 按近1月涨幅排序，取前20条（FundApi：Web 端自动套 CORS 代理，三端真实数据一致）
+            string url = FundApi.Rank(ft, DateTime.Today.AddMonths(-1), DateTime.Today, 20);
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
             string raw = await _http.GetStringAsync(url, cts.Token);
@@ -435,7 +431,7 @@ public partial class FundTrackerViewModel : ObservableObject
 
     private static async Task<List<(string, string, string)>?> DownloadFundCodeTableAsync()
     {
-        string url = "https://fund.eastmoney.com/js/fundcode_search.js";
+        string url = FundApi.CodeTable();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         string raw = await _http.GetStringAsync(url, cts.Token);
         var match = Regex.Match(raw, @"var r = (\[.+\])");
@@ -462,8 +458,7 @@ public partial class FundTrackerViewModel : ObservableObject
         }
         try
         {
-            long ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            string url = $"https://fundgz.1234567.com.cn/js/{code}.js?rt={ts}";
+            string url = FundApi.Estimate(code);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             string raw = await _http.GetStringAsync(url, cts.Token);
             var m = Regex.Match(raw, @"jsonpgz\((.+)\)");
@@ -583,8 +578,7 @@ public partial class FundTrackerViewModel : ObservableObject
     {
         try
         {
-            long ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            string url = $"https://fundgz.1234567.com.cn/js/{code}.js?rt={ts}";
+            string url = FundApi.Estimate(code);
             using var reqCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             reqCts.CancelAfter(TimeSpan.FromSeconds(10));
             string raw = await _http.GetStringAsync(url, reqCts.Token);
@@ -614,8 +608,7 @@ public partial class FundTrackerViewModel : ObservableObject
 
         try
         {
-            string url = $"https://push2.eastmoney.com/api/qt/slist/get" +
-                         $"?fltt=2&fields=f2,f3,f12,f14&secid=0.{code}";
+            string url = FundApi.Quote(code);
             using var reqCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             reqCts.CancelAfter(TimeSpan.FromSeconds(10));
             string raw = await _http.GetStringAsync(url, reqCts.Token);

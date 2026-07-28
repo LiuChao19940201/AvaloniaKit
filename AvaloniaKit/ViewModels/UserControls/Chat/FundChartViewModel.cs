@@ -149,11 +149,8 @@ public partial class FundChartViewModel : ObservableObject
                 ? new DateTime(endDate.Year, endDate.Month, 1)
                 : endDate.AddMonths(-3);
 
-            string url = $"https://api.fund.eastmoney.com/f10/lsjz" +
-                         $"?fundCode={FundCode}" +
-                         $"&pageIndex=1&pageSize=200" +
-                         $"&startDate={startDate:yyyy-MM-dd}" +
-                         $"&endDate={endDate:yyyy-MM-dd}";
+            // FundApi：Web 端自动套 CORS 代理，三端真实数据一致
+            string url = FundApi.NavHistory(FundCode, startDate, endDate);
 
             using var reqCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             reqCts.CancelAfter(TimeSpan.FromSeconds(12));
