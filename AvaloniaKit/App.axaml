@@ -3,7 +3,7 @@
 			 xmlns:local="using:AvaloniaKit"
 			 x:Class="AvaloniaKit.App"
 			 xmlns:semi="https://irihi.tech/semi"
-			 xmlns:cvt="using:AvaloniaKit.Tools.Converters"
+			 xmlns:cvt="using:AvaloniaKit.Converters"
 			 xmlns:u-semi="clr-namespace:Ursa.Themes.Semi;assembly=Ursa.Themes.Semi"
 			 RequestedThemeVariant="Default">
 

@@ -1,6 +1,6 @@
 using System;
 
-namespace AvaloniaKit.Tools.Extensions;
+namespace AvaloniaKit.Api;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  FundApi — 按平台返回基金接口地址（与 NeteaseApi 同模式）

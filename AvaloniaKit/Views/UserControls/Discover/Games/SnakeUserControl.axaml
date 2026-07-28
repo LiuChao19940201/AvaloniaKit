@@ -122,7 +122,11 @@
                         <ItemsControl ItemsSource="{Binding Cells}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <UniformGrid Rows="20" Columns="20"/>
+                                    <!-- ★ 必须给定固定逻辑尺寸：棋盘位于 Viewbox（无限测量约束）内，
+                                         格子是无内容的空 Border（期望尺寸为 0），缺省尺寸时整盘
+                                         期望尺寸为 0 → 三端棋盘全部空白（与其他游戏棋盘写法一致） -->
+                                    <UniformGrid Rows="20" Columns="20"
+                                                 Width="400" Height="400"/>
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
 

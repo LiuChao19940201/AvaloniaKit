@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace AvaloniaKit.Tools.Extensions;
+namespace AvaloniaKit.Api;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  NeteaseApi — 按平台返回网易云接口地址

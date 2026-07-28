@@ -19,7 +19,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Content Include="..\..\..\资源文件\Aadroid项目打包命令.txt" Link="Resources\Aadroid项目打包命令.txt" />
+		<!-- 三端（Desktop/Android/iOS）共用同一份 SQLite 实现（namespace AvaloniaKit.Data），
+		     链接文件编译，避免各端维护重复代码 -->
+		<Compile Include="..\Shared\Data\SqliteLocalDataService.cs" Link="Data\SqliteLocalDataService.cs" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -7,5 +7,6 @@
   <Project Path="AvaloniaKit.iOS/AvaloniaKit.iOS.csproj">
     <Deploy />
   </Project>
+  <Project Path="AvaloniaKit.UiTests/AvaloniaKit.UiTests.csproj" />
   <Project Path="AvaloniaKit/AvaloniaKit.csproj" />
 </Solution>

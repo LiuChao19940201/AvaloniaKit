@@ -1,12 +1,11 @@
 using Avalonia.Threading;
-using AvaloniaKit.Tools.Helper;
-using AvaloniaKit.ViewModels.Messages;
+using AvaloniaKit.Messages;
+using AvaloniaKit.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using System;
 using System.Collections.ObjectModel;
-using System.Threading.Tasks;
 using System.Timers;
 
 namespace AvaloniaKit.ViewModels.UserControls.Discover.Games;
@@ -18,7 +17,7 @@ namespace AvaloniaKit.ViewModels.UserControls.Discover.Games;
 //  · 命中后 1.5 秒无敌闪烁；3 条命；最高分持久化
 //  · 音效：射击/命中/敌机爆炸/玩家中弹震动/波次提升/结束
 // ══════════════════════════════════════════════════════════════════════════════
-public partial class PlaneViewModel : ObservableObject
+public partial class PlaneViewModel : GameViewModelBase, ISubPageViewModel
 {
     public const double AreaW = 320;
     public const double AreaH = 480;
@@ -47,15 +46,12 @@ public partial class PlaneViewModel : ObservableObject
     private double _spawnCooldown;
     private int _invincibleTicks;
 
-    public PlaneViewModel()
-    {
-        _ = LoadHighScoreAsync();
-    }
+    protected override string ScoreKey => "plane";
 
-    private async Task LoadHighScoreAsync()
+    public PlaneViewModel(GameSfx sfx, IGameScoreStore scoreStore)
+        : base(sfx, scoreStore)
     {
-        int hs = await GameScoreStore.LoadAsync("plane");
-        await Dispatcher.UIThread.InvokeAsync(() => HighScore = Math.Max(HighScore, hs));
+        LoadScore(v => HighScore = Math.Max(HighScore, v));
     }
 
     // ════════════════════════════════════════════════════════════
@@ -99,7 +95,7 @@ public partial class PlaneViewModel : ObservableObject
         IsPaused = false;
         IsRunning = true;
 
-        GameSfx.Start();
+        Sfx.Start();
         StartTimer();
     }
 
@@ -164,7 +160,7 @@ public partial class PlaneViewModel : ObservableObject
                 H = 12,
                 Vy = -BulletSpeed,
             });
-            GameSfx.Shoot();
+            Sfx.Shoot();
         }
 
         // ── 刷敌机（波次越高越快）──
@@ -225,19 +221,19 @@ public partial class PlaneViewModel : ObservableObject
                 else { Sprites.Remove(e); Sprites.RemoveAt(i); }
 
                 Score += 10;
-                GameSfx.Hit();
+                Sfx.Hit();
 
                 if (Score > HighScore)
                 {
                     HighScore = Score;
-                    GameScoreStore.Save("plane", HighScore);
+                    SaveScore(HighScore);
                 }
 
                 int newWave = Score / 200 + 1;
                 if (newWave != Wave)
                 {
                     Wave = newWave;
-                    GameSfx.LevelUp();
+                    Sfx.LevelUp();
                 }
                 break;
             }
@@ -262,8 +258,8 @@ public partial class PlaneViewModel : ObservableObject
                 Sprites.RemoveAt(i);
 
                 Lives--;
-                GameSfx.Vibrate();
-                GameSfx.Explode();
+                Sfx.Vibrate();
+                Sfx.Explode();
 
                 if (Lives <= 0)
                 {
@@ -287,9 +283,9 @@ public partial class PlaneViewModel : ObservableObject
         if (Score > HighScore)
         {
             HighScore = Score;
-            GameScoreStore.Save("plane", HighScore);
+            SaveScore(HighScore);
         }
-        GameSfx.GameOver();
+        Sfx.GameOver();
     }
 
     private static bool Overlap(double x1, double y1, double w1, double h1,

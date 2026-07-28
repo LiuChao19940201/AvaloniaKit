@@ -4,7 +4,10 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AvaloniaKit.Desktop.Data;
+namespace AvaloniaKit.Data;
+
+// Desktop / Android / iOS 共用的 SQLite 实现（各平台头以链接文件方式编译本文件，
+// 不下沉共享项目是为了避免 sqlite-net-pcl 传染 Browser 平台头）
 
 [Table("app_settings")]
 internal class AppSetting

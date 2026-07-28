@@ -1,6 +1,6 @@
 using Avalonia.Threading;
-using AvaloniaKit.Tools.Helper;
-using AvaloniaKit.ViewModels.Messages;
+using AvaloniaKit.Messages;
+using AvaloniaKit.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -17,7 +17,7 @@ namespace AvaloniaKit.ViewModels.UserControls.Discover.Games;
 //  · 胜利判定按"约束全满足"而非硬对终盘（多解盘也算赢）
 //  · 音效：选格/落子/冲突/提示/胜利；最快用时持久化
 // ══════════════════════════════════════════════════════════════════════════════
-public partial class SudokuViewModel : ObservableObject
+public partial class SudokuViewModel : GameViewModelBase, ISubPageViewModel
 {
     [ObservableProperty] private bool _isRunning;
     [ObservableProperty] private bool _isWin;
@@ -33,7 +33,10 @@ public partial class SudokuViewModel : ObservableObject
     private Timer? _clock;
     private SudokuCell? _selected;
 
-    public SudokuViewModel()
+    protected override string ScoreKey => "sudoku_best";
+
+    public SudokuViewModel(GameSfx sfx, IGameScoreStore scoreStore)
+        : base(sfx, scoreStore)
     {
         for (int r = 0; r < 9; r++)
             for (int c = 0; c < 9; c++)
@@ -49,13 +52,7 @@ public partial class SudokuViewModel : ObservableObject
                         r == 8 ? 2 : 0.5),
                 });
 
-        _ = LoadBestAsync();
-    }
-
-    private async System.Threading.Tasks.Task LoadBestAsync()
-    {
-        int best = await GameScoreStore.LoadAsync("sudoku_best");
-        await Dispatcher.UIThread.InvokeAsync(() => BestTime = best);
+        LoadScore(v => BestTime = v);
     }
 
     // ════════════════════════════════════════════════════════════
@@ -115,7 +112,7 @@ public partial class SudokuViewModel : ObservableObject
         IsWin = false;
         IsRunning = true;
 
-        GameSfx.Start();
+        Sfx.Start();
         StartClock();
     }
 
@@ -127,7 +124,7 @@ public partial class SudokuViewModel : ObservableObject
         if (_selected != null) _selected.IsSelected = false;
         _selected = cell;
         cell.IsSelected = true;
-        GameSfx.Move();
+        Sfx.Move();
     }
 
     /// <summary>数字键盘输入：参数 "1"~"9"</summary>
@@ -141,9 +138,9 @@ public partial class SudokuViewModel : ObservableObject
         RefreshConflicts();
 
         if (_selected.IsConflict)
-            GameSfx.Error();
+            Sfx.Error();
         else
-            GameSfx.Rotate();
+            Sfx.Rotate();
 
         CheckWin();
     }
@@ -154,7 +151,7 @@ public partial class SudokuViewModel : ObservableObject
         if (!IsRunning || _selected is null || _selected.IsFixed || _selected.Value == 0) return;
         _selected.Value = 0;
         RefreshConflicts();
-        GameSfx.Drop();
+        Sfx.Drop();
     }
 
     /// <summary>提示：按终盘填当前选中格（限 3 次）</summary>
@@ -175,7 +172,7 @@ public partial class SudokuViewModel : ObservableObject
         target.Value = _solution[target.Row, target.Col];
         HintsLeft--;
         RefreshConflicts();
-        GameSfx.Merge();
+        Sfx.Merge();
         CheckWin();
     }
 
@@ -262,11 +259,11 @@ public partial class SudokuViewModel : ObservableObject
         if (BestTime == 0 || Elapsed < BestTime)
         {
             BestTime = Elapsed;
-            GameScoreStore.Save("sudoku_best", BestTime);
+            SaveScore(BestTime);
         }
 
-        GameSfx.Vibrate();
-        GameSfx.Win();
+        Sfx.Vibrate();
+        Sfx.Win();
     }
 
     // ── 计时 ──────────────────────────────────────────────────

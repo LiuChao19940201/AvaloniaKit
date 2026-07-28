@@ -1,5 +1,4 @@
 using AvaloniaKit.Messages;
-using AvaloniaKit.ViewModels.Messages;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -7,8 +6,9 @@ using System.Collections.ObjectModel;
 
 namespace AvaloniaKit.ViewModels.UserControls.Chat;
 
-public partial class ChatViewModel : ObservableObject
+public partial class ChatViewModel : PageViewModelBase
 {
+    public override string Title => "微信";
     public ObservableCollection<ChatItemViewModel> ChatList { get; } = new()
     {
         // ★ 天气预报入口（排在基金上方）

@@ -1,12 +1,10 @@
-using Avalonia.Threading;
-using AvaloniaKit.Tools.Helper;
-using AvaloniaKit.ViewModels.Messages;
+using AvaloniaKit.Messages;
+using AvaloniaKit.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using System;
 using System.Collections.ObjectModel;
-using System.Threading.Tasks;
 
 namespace AvaloniaKit.ViewModels.UserControls.Discover.Games;
 
@@ -14,9 +12,9 @@ namespace AvaloniaKit.ViewModels.UserControls.Discover.Games;
 //  Game2048ViewModel — 2048（4×4 滑动合并）
 //  · 操作：方向键/WASD/棋盘滑动手势/底部按钮，三端一致
 //  · 音效：滑动/合并/大数字合并/胜利/失败（GameSfx 合成音，三端一致）
-//  · 最高分持久化：GameScoreStore（SQLite / localStorage）
+//  · 最高分持久化：IGameScoreStore（SQLite / localStorage）
 // ══════════════════════════════════════════════════════════════════════════════
-public partial class Game2048ViewModel : ObservableObject
+public partial class Game2048ViewModel : GameViewModelBase, ISubPageViewModel
 {
     public const int Size = 4;
 
@@ -32,19 +30,16 @@ public partial class Game2048ViewModel : ObservableObject
     private readonly Random _rng = new();
     private bool _winNotified;   // 到 2048 后继续玩不再重复提示
 
-    public Game2048ViewModel()
+    protected override string ScoreKey => "2048";
+
+    public Game2048ViewModel(GameSfx sfx, IGameScoreStore scoreStore)
+        : base(sfx, scoreStore)
     {
         for (int r = 0; r < Size; r++)
             for (int c = 0; c < Size; c++)
                 Tiles.Add(new TileCell { Row = r, Col = c });
 
-        _ = LoadHighScoreAsync();
-    }
-
-    private async Task LoadHighScoreAsync()
-    {
-        int hs = await GameScoreStore.LoadAsync("2048");
-        await Dispatcher.UIThread.InvokeAsync(() => HighScore = Math.Max(HighScore, hs));
+        LoadScore(v => HighScore = Math.Max(HighScore, v));
     }
 
     // ════════════════════════════════════════════════════════════
@@ -69,7 +64,7 @@ public partial class Game2048ViewModel : ObservableObject
         _winNotified = false;
         IsRunning = true;
 
-        GameSfx.Start();
+        Sfx.Start();
         AddRandomTile();
         AddRandomTile();
         Render();
@@ -141,7 +136,7 @@ public partial class Game2048ViewModel : ObservableObject
 
         if (!moved)
         {
-            GameSfx.Error();
+            Sfx.Error();
             return;
         }
 
@@ -149,13 +144,13 @@ public partial class Game2048ViewModel : ObservableObject
         if (Score > HighScore)
         {
             HighScore = Score;
-            GameScoreStore.Save("2048", HighScore);
+            SaveScore(HighScore);
         }
 
         // 音效分档：普通滑动 / 合并 / 大数字合并
-        if (maxMerged >= 256) { GameSfx.Combo(); GameSfx.Vibrate(); }
-        else if (maxMerged > 0) GameSfx.Merge();
-        else GameSfx.Move();
+        if (maxMerged >= 256) { Sfx.Combo(); Sfx.Vibrate(); }
+        else if (maxMerged > 0) Sfx.Merge();
+        else Sfx.Move();
 
         AddRandomTile();
         Render();
@@ -164,14 +159,14 @@ public partial class Game2048ViewModel : ObservableObject
         {
             _winNotified = true;
             IsWin = true;
-            GameSfx.Win();
+            Sfx.Win();
         }
 
         if (!CanMove())
         {
             IsGameOver = true;
             IsRunning = false;
-            GameSfx.GameOver();
+            Sfx.GameOver();
         }
     }
 

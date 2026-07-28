@@ -1,4 +1,4 @@
-﻿using AvaloniaKit.ViewModels.Messages;
+﻿using AvaloniaKit.Messages;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -14,13 +14,15 @@ namespace AvaloniaKit.ViewModels.UserControls.Chat;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  WeatherViewModel — 天气预报（实时 + 24小时逐时 + 7日预报 + 城市切换）
-//  · 数据源：Open-Meteo（免费无Key、HTTPS、自带 CORS:*）→ 三端同一条链路直连，
-//    替换掉原来的 d1.weather.com.cn（明文 http + 无 CORS + 只有武汉实时数据）
+//  · 数据源：Open-Meteo（免费无Key、HTTPS、自带 CORS:*）→ 三端同一条链路直连
 //  · 天气现象采用 WMO 标准编码，本地映射为中文描述/Emoji/动效场景
 //  · 动态效果（晴/雨/雪/云/雷）由 View 层 code-behind 根据 WeatherKind 驱动
 // ══════════════════════════════════════════════════════════════════════════════
-public partial class WeatherViewModel : ObservableObject
+public partial class WeatherViewModel : PageViewModelBase, ISubPageViewModel, INavigationAware
 {
+    public override bool ShowTitleBar => false;
+    public override bool ShowTabBar => false;
+
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(15) };
 
     // ── 城市列表（名称 + 经纬度，默认武汉）─────────────────────────────────
@@ -93,6 +95,9 @@ public partial class WeatherViewModel : ObservableObject
     [RelayCommand] private Task Refresh() => LoadWeatherAsync();
 
     [RelayCommand] private void ToggleCityPanel() => IsCityPanelOpen = !IsCityPanelOpen;
+
+    /// <summary>关闭城市面板（遮罩点击等 View 层触发）</summary>
+    [RelayCommand] private void CloseCityPanel() => IsCityPanelOpen = false;
 
     [RelayCommand]
     private void SelectCity(WeatherCity? city)

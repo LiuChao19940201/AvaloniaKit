@@ -1,18 +1,17 @@
 ﻿using Avalonia.Threading;
-using AvaloniaKit.Tools.Helper;
-using AvaloniaKit.ViewModels.Messages;
+using AvaloniaKit.Messages;
+using AvaloniaKit.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Threading.Tasks;
 using System.Timers;
 
 namespace AvaloniaKit.ViewModels.UserControls.Discover.Games;
 
-public partial class SnakeViewModel : ObservableObject
+public partial class SnakeViewModel : GameViewModelBase, ISubPageViewModel
 {
     public const int Rows = 20;
     public const int Cols = 20;
@@ -45,7 +44,10 @@ public partial class SnakeViewModel : ObservableObject
     private readonly Random _rng = new();
     private int _foodEaten;
 
-    public SnakeViewModel()
+    protected override string ScoreKey => "snake";
+
+    public SnakeViewModel(GameSfx sfx, IGameScoreStore scoreStore)
+        : base(sfx, scoreStore)
     {
         for (int r = 0; r < Rows; r++)
             for (int c = 0; c < Cols; c++)
@@ -56,13 +58,7 @@ public partial class SnakeViewModel : ObservableObject
             }
 
         // 最高分：从本地存储恢复（三端：SQLite / localStorage）
-        _ = LoadHighScoreAsync();
-    }
-
-    private async Task LoadHighScoreAsync()
-    {
-        int hs = await GameScoreStore.LoadAsync("snake");
-        await Dispatcher.UIThread.InvokeAsync(() => HighScore = Math.Max(HighScore, hs));
+        LoadScore(v => HighScore = Math.Max(HighScore, v));
     }
 
     // ============================
@@ -80,7 +76,7 @@ public partial class SnakeViewModel : ObservableObject
         IsRunning = true;
         IsPaused = false;
 
-        GameSfx.Start();
+        Sfx.Start();
         StartTimer();
     }
 
@@ -113,7 +109,7 @@ public partial class SnakeViewModel : ObservableObject
         if (_dirQueue.Count < 2)
         {
             _dirQueue.Enqueue(dir);
-            GameSfx.Move();
+            Sfx.Move();
         }
     }
 
@@ -171,12 +167,12 @@ public partial class SnakeViewModel : ObservableObject
         {
             Score += 10;
             _foodEaten++;
-            GameSfx.Eat();
+            Sfx.Eat();
 
             if (Score > HighScore)
             {
                 HighScore = Score;
-                GameScoreStore.Save("snake", HighScore);
+                SaveScore(HighScore);
             }
 
             // 每 3 个食物提一档速度
@@ -185,7 +181,7 @@ public partial class SnakeViewModel : ObservableObject
             {
                 SpeedLevel = newLevel;
                 if (_timer != null) _timer.Interval = GetInterval();
-                GameSfx.LevelUp();
+                Sfx.LevelUp();
             }
 
             SpawnFood();
@@ -206,12 +202,12 @@ public partial class SnakeViewModel : ObservableObject
         IsGameOver = true;
         IsRunning = false;
 
-        GameSfx.Vibrate();
-        GameSfx.GameOver();
+        Sfx.Vibrate();
+        Sfx.GameOver();
         if (Score > HighScore)
         {
             HighScore = Score;
-            GameScoreStore.Save("snake", HighScore);
+            SaveScore(HighScore);
         }
 
         Render();

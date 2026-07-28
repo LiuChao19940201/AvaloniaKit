@@ -7,13 +7,22 @@ using System;
 
 namespace AvaloniaKit.ViewModels.UserControls.Profile;
 
-public partial class ServiceViewModel : ObservableObject
+public partial class ServiceViewModel : PageViewModelBase, ISubPageViewModel, INavigationAware
 {
+    public override string Title => "服务";
+    public override bool ShowTitleBar => false;
+    public override bool ShowTabBar => false;
+
+    private readonly IDeviceService? _device;
+
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isFlashlightOn;
 
     private static readonly float[] BrightnessLevels = [0.2f, 0.6f, 0.8f];
     private int _brightnessIndex;
+
+    public ServiceViewModel(IDeviceService? deviceService = null)
+        => _device = deviceService;
 
     private static bool IsMobilePlatform() =>
         OperatingSystem.IsAndroid() || OperatingSystem.IsIOS();
@@ -32,7 +41,7 @@ public partial class ServiceViewModel : ObservableObject
     /// <summary>无平台门禁：音效/震动三端均有实现（Desktop NAudio / Browser WebAudio）</summary>
     private void ExecuteCore(string featureName, Action action)
     {
-        if (ServiceLocator.DeviceService is null)
+        if (_device is null)
         {
             StatusMessage = $"⚠️ [{featureName}] 设备服务未注册";
             return;
@@ -54,9 +63,7 @@ public partial class ServiceViewModel : ObservableObject
         WeakReferenceMessenger.Default.Send(new NavigateBackToProfileMessage());
     }
 
-    /// <summary>
-    /// 每次进入服务页时调用，清除上一次残留的状态信息。
-    /// </summary>
+    /// <summary>每次进入服务页时调用，清除上一次残留的状态信息</summary>
     public void OnNavigatedTo()
     {
         StatusMessage = string.Empty;
@@ -69,7 +76,7 @@ public partial class ServiceViewModel : ObservableObject
     {
         ExecuteOnMobile("相机", () =>
         {
-            ServiceLocator.DeviceService!.OpenCamera();
+            _device!.OpenCamera();
             StatusMessage = "✅ 相机已打开";
         });
     }
@@ -80,7 +87,7 @@ public partial class ServiceViewModel : ObservableObject
         // 三端可用：Android 马达 / Browser navigator.vibrate / Desktop 无硬件静默
         ExecuteCore("震动", () =>
         {
-            ServiceLocator.DeviceService!.Vibrate();
+            _device!.Vibrate();
             StatusMessage = "✅ 震动已触发";
         });
     }
@@ -90,7 +97,7 @@ public partial class ServiceViewModel : ObservableObject
     {
         ExecuteOnMobile("相册", () =>
         {
-            ServiceLocator.DeviceService!.OpenAlbum();
+            _device!.OpenAlbum();
             StatusMessage = "✅ 相册已打开";
         });
     }
@@ -101,7 +108,7 @@ public partial class ServiceViewModel : ObservableObject
         // 三端可用：Android ToneGenerator / Desktop NAudio / Browser WebAudio
         ExecuteCore("音效", () =>
         {
-            ServiceLocator.DeviceService!.PlaySound();
+            _device!.PlaySound();
             StatusMessage = "✅ 音效已播放";
         });
     }
@@ -111,7 +118,7 @@ public partial class ServiceViewModel : ObservableObject
     {
         ExecuteOnMobile("蓝牙", () =>
         {
-            var status = ServiceLocator.DeviceService!.GetBluetoothStatus();
+            var status = _device!.GetBluetoothStatus();
             StatusMessage = $"🔵 蓝牙状态：{status}";
         });
     }
@@ -121,7 +128,7 @@ public partial class ServiceViewModel : ObservableObject
     {
         ExecuteOnMobile("GPS 定位", () =>
         {
-            var location = ServiceLocator.DeviceService!.GetGpsLocation();
+            var location = _device!.GetGpsLocation();
             StatusMessage = $"📍 GPS 信息：{location}";
         });
     }
@@ -131,7 +138,7 @@ public partial class ServiceViewModel : ObservableObject
     {
         ExecuteOnMobile("NFC", () =>
         {
-            var status = ServiceLocator.DeviceService!.GetNfcStatus();
+            var status = _device!.GetNfcStatus();
             StatusMessage = $"📡 NFC 状态：{status}";
         });
     }
@@ -141,7 +148,7 @@ public partial class ServiceViewModel : ObservableObject
     {
         ExecuteOnMobile("WiFi", () =>
         {
-            var status = ServiceLocator.DeviceService!.GetWifiStatus();
+            var status = _device!.GetWifiStatus();
             StatusMessage = $"📶 WiFi 状态：{status}";
         });
     }
@@ -152,7 +159,7 @@ public partial class ServiceViewModel : ObservableObject
         ExecuteOnMobile("闪光灯", () =>
         {
             IsFlashlightOn = !IsFlashlightOn;
-            ServiceLocator.DeviceService!.ToggleFlashlight(IsFlashlightOn);
+            _device!.ToggleFlashlight(IsFlashlightOn);
             StatusMessage = IsFlashlightOn ? "🔦 闪光灯已开启" : "🔦 闪光灯已关闭";
         });
     }
@@ -163,7 +170,7 @@ public partial class ServiceViewModel : ObservableObject
         ExecuteOnMobile("屏幕亮度", () =>
         {
             var level = BrightnessLevels[_brightnessIndex];
-            ServiceLocator.DeviceService!.SetBrightness(level);
+            _device!.SetBrightness(level);
             StatusMessage = $"🔆 屏幕亮度已调至 {level * 100:0}%";
             _brightnessIndex = (_brightnessIndex + 1) % BrightnessLevels.Length;
         });
@@ -174,7 +181,7 @@ public partial class ServiceViewModel : ObservableObject
     {
         ExecuteOnMobile("传感器", () =>
         {
-            var info = ServiceLocator.DeviceService!.GetSensorInfo();
+            var info = _device!.GetSensorInfo();
             StatusMessage = $"🔬 传感器信息：{info}";
         });
     }
@@ -184,7 +191,7 @@ public partial class ServiceViewModel : ObservableObject
     {
         ExecuteOnMobile("通知推送", () =>
         {
-            ServiceLocator.DeviceService!.SendNotification("测试通知", "这是一条来自 AvaloniaKit 的测试通知");
+            _device!.SendNotification("测试通知", "这是一条来自 AvaloniaKit 的测试通知");
             StatusMessage = "🔔 通知已发送";
         });
     }

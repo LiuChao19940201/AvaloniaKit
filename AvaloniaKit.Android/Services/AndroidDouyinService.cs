@@ -20,20 +20,24 @@ namespace AvaloniaKit.Android.Services;
 // ══════════════════════════════════════════════════════════════════════════════
 public class AndroidDouyinService : IDouyinService
 {
-    private readonly Activity _activity;
+    // Activity 延迟访问器：注册发生在 Application.OnCreate（Activity 尚未创建），
+    // Show/Hide 均在 MainActivity 就绪后由 UI 交互触发
+    private readonly Func<Activity> _getActivity;
+    private Activity CurrentActivity => _getActivity();
     private WebView? _webView;
 
     public event EventHandler? ExitRequested;
 
-    public AndroidDouyinService(Activity activity) => _activity = activity;
+    public AndroidDouyinService(Func<Activity> activityProvider) => _getActivity = activityProvider;
 
     public void Show(string html, double topOffsetDip)
     {
-        _activity.RunOnUiThread(() =>
+        var activity = CurrentActivity;
+        activity.RunOnUiThread(() =>
         {
             HideCore();
 
-            var wv = new WebView(_activity);
+            var wv = new WebView(activity);
             var s = wv.Settings;
             s.JavaScriptEnabled = true;
             s.MediaPlaybackRequiresUserGesture = false;   // ★ 允许 video 自动播放
@@ -48,19 +52,19 @@ public class AndroidDouyinService : IDouyinService
                 "text/html", "utf-8", null);
 
             // ★ 顶部下移：露出 Avalonia 标题栏（DIP × density = 物理像素）
-            float density = _activity.Resources?.DisplayMetrics?.Density ?? 1f;
+            float density = activity.Resources?.DisplayMetrics?.Density ?? 1f;
             var lp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MatchParent,
                 ViewGroup.LayoutParams.MatchParent)
             {
                 TopMargin = (int)Math.Round(topOffsetDip * density),
             };
-            _activity.AddContentView(wv, lp);
+            activity.AddContentView(wv, lp);
             _webView = wv;
         });
     }
 
-    public void Hide() => _activity.RunOnUiThread(HideCore);
+    public void Hide() => CurrentActivity.RunOnUiThread(HideCore);
 
     private void HideCore()
     {

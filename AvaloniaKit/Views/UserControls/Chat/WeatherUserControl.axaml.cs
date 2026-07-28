@@ -63,9 +63,10 @@ public partial class WeatherUserControl : UserControl
 
     private void OnScrimPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (_vm is { IsCityPanelOpen: true })
+        // 城市弹层遮罩点击 → 走 VM 命令关闭（视图不直接改写 VM 状态）
+        if (_vm is { IsCityPanelOpen: true } vm)
         {
-            _vm.IsCityPanelOpen = false;
+            vm.CloseCityPanelCommand.Execute(null);
             e.Handled = true;
         }
     }

@@ -1,13 +1,12 @@
 using AvaloniaKit.Messages;
-using AvaloniaKit.ViewModels.Messages;
-using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace AvaloniaKit.ViewModels.UserControls.Discover;
 
-public partial class DiscoverViewModel : ObservableObject
+public partial class DiscoverViewModel : PageViewModelBase
 {
+    public override string Title => "发现";
     [RelayCommand]
     private void OpenMoments()
     {
@@ -51,7 +50,7 @@ public partial class DiscoverViewModel : ObservableObject
     [RelayCommand]
     private void OpenGames()
     {
-        WeakReferenceMessenger.Default.Send(new NavigateToGameBoxesMessages());
+        WeakReferenceMessenger.Default.Send(new NavigateToGameBoxesMessage());
     }
 
     [RelayCommand]

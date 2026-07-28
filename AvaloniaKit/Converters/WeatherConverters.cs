@@ -3,7 +3,7 @@ using Avalonia.Media;
 using System;
 using System.Globalization;
 
-namespace AvaloniaKit.Tools.Converters;
+namespace AvaloniaKit.Converters;
 
 // ══════════════════════════════════════════════════════════════════════
 //  将和风天气图标编号转为对应 Emoji（无需网络，纯本地映射）

@@ -4,8 +4,9 @@ using System.Collections.ObjectModel;
 
 namespace AvaloniaKit.ViewModels.UserControls.Contacts;
 
-public partial class ContactsViewModel : ObservableObject
+public partial class ContactsViewModel : PageViewModelBase
 {
+    public override string Title => "通讯录";
     public ObservableCollection<ContactItemViewModel> Contacts { get; } = new()
     {
         new() { Name = "张三" },

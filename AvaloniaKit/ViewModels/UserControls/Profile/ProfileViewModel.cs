@@ -11,8 +11,14 @@ using System.Threading.Tasks;
 
 namespace AvaloniaKit.ViewModels.UserControls.Profile;
 
-public partial class ProfileViewModel : ObservableObject
+public partial class ProfileViewModel : PageViewModelBase
 {
+    public override string Title => "我";
+    public override bool ShowTitleBar => false;
+
+    private readonly ILocalDataService? _localData;
+    private readonly IImagePickerService? _imagePicker;
+
     [ObservableProperty] private string _nickname = "Hello World";
     [ObservableProperty] private string _wechatId = "LC862739233";
     [ObservableProperty] private int _friendCount = 2;
@@ -24,8 +30,13 @@ public partial class ProfileViewModel : ObservableObject
 
     [ObservableProperty] private bool _isDarkTheme;
 
-    public ProfileViewModel()
+    public ProfileViewModel(
+        ILocalDataService? localDataService = null,
+        IImagePickerService? imagePickerService = null)
     {
+        _localData = localDataService;
+        _imagePicker = imagePickerService;
+
         _ = LoadAvatarOnStartupAsync();
 
         // 初始化时同步当前主题
@@ -38,10 +49,9 @@ public partial class ProfileViewModel : ObservableObject
     {
         try
         {
-            var service = ServiceLocator.LocalDataService;
-            if (service is null) return;
+            if (_localData is null) return;
 
-            var bytes = await service.LoadAvatarAsync();
+            var bytes = await _localData.LoadAvatarAsync();
             if (bytes is null || bytes.Length == 0) return;
 
             using var ms = new MemoryStream(bytes);
@@ -58,10 +68,9 @@ public partial class ProfileViewModel : ObservableObject
     [RelayCommand]
     private async Task PickAvatar()
     {
-        var pickerService = ServiceLocator.ImagePickerService;
-        if (pickerService is null) return;
+        if (_imagePicker is null) return;
 
-        var stream = await pickerService.PickImageAsync();
+        var stream = await _imagePicker.PickImageAsync();
         if (stream is null) return;
 
         try
@@ -77,13 +86,12 @@ public partial class ProfileViewModel : ObservableObject
             }
 
             // 将缩略图编码为 PNG 再持久化（~10-30KB，远小于原始 5MB）
-            var dataService = ServiceLocator.LocalDataService;
-            if (dataService is not null)
+            if (_localData is not null)
             {
                 using var saveStream = new MemoryStream();
                 // Avalonia 12：旧 Save(Stream, int?) 已过时，改用 BitmapEncoderOptions 重载
                 AvatarBitmap.Save(saveStream, PngBitmapEncoderOptions.Default); // 编码为 PNG
-                await dataService.SaveAvatarAsync(saveStream.ToArray());
+                await _localData.SaveAvatarAsync(saveStream.ToArray());
             }
         }
         catch

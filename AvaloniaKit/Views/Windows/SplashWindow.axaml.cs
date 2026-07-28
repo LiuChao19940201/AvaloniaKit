@@ -9,7 +9,7 @@ public partial class SplashWindow : Ursa.Controls.SplashWindow
     {
         InitializeComponent();
 
-        // ´°ÌåÍÏ¶¯£¨Avalonia Ğ´·¨£©
+        // æ— ç³»ç»Ÿè¾¹æ¡†çª—ä½“ï¼šæŒ‰ä½ä»»æ„ç©ºç™½å¤„æ‹–åŠ¨
         PointerPressed += (s, e) =>
         {
             if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
@@ -21,10 +21,10 @@ public partial class SplashWindow : Ursa.Controls.SplashWindow
 
     protected override async Task<Window?> CreateNextWindow()
     {
-        // È·±£·½·¨ÌåÄÚÓĞawait¹Ø¼ü×Ö
+        // ä¿æŒ async ç­¾åï¼ˆUrsa å¥‘çº¦ï¼‰ï¼Œæ— å®é™…å¼‚æ­¥å·¥ä½œ
         await Task.CompletedTask;
 
-        if (this.DialogResult is true)
+        if (DialogResult is true)
         {
             return new MainWindow();
         }

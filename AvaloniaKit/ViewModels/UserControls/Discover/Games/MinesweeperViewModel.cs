@@ -1,13 +1,12 @@
 using Avalonia.Threading;
-using AvaloniaKit.Tools.Helper;
-using AvaloniaKit.ViewModels.Messages;
+using AvaloniaKit.Messages;
+using AvaloniaKit.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Threading.Tasks;
 using System.Timers;
 
 namespace AvaloniaKit.ViewModels.UserControls.Discover.Games;
@@ -18,7 +17,7 @@ namespace AvaloniaKit.ViewModels.UserControls.Discover.Games;
 //  · 插旗模式开关（移动端友好）+ 桌面右键插旗 + 数字格双击式 Chording
 //  · 音效：翻格/插旗/踩雷爆炸+震动/胜利；最佳用时持久化（越小越好）
 // ══════════════════════════════════════════════════════════════════════════════
-public partial class MinesweeperViewModel : ObservableObject
+public partial class MinesweeperViewModel : GameViewModelBase, ISubPageViewModel
 {
     public const int Rows = 14;
     public const int Cols = 10;
@@ -41,19 +40,16 @@ public partial class MinesweeperViewModel : ObservableObject
     private bool _minesPlaced;
     private int _revealedCount;
 
-    public MinesweeperViewModel()
+    protected override string ScoreKey => "minesweeper_best";
+
+    public MinesweeperViewModel(GameSfx sfx, IGameScoreStore scoreStore)
+        : base(sfx, scoreStore)
     {
         for (int r = 0; r < Rows; r++)
             for (int c = 0; c < Cols; c++)
                 Cells.Add(new MineCell { Row = r, Col = c });
 
-        _ = LoadBestAsync();
-    }
-
-    private async Task LoadBestAsync()
-    {
-        int best = await GameScoreStore.LoadAsync("minesweeper_best");
-        await Dispatcher.UIThread.InvokeAsync(() => BestTime = best);
+        LoadScore(v => BestTime = v);
     }
 
     // ════════════════════════════════════════════════════════════
@@ -95,13 +91,13 @@ public partial class MinesweeperViewModel : ObservableObject
         IsFlagMode = false;
         IsRunning = true;
 
-        GameSfx.Start();
+        Sfx.Start();
     }
 
     /// <summary>插旗模式切换（ToggleButton 双向绑定触发）</summary>
     partial void OnIsFlagModeChanged(bool value)
     {
-        if (IsRunning) GameSfx.Move();
+        if (IsRunning) Sfx.Move();
     }
 
     /// <summary>格子点按：插旗模式→插旗；已翻开数字→Chording；否则翻开</summary>
@@ -129,7 +125,7 @@ public partial class MinesweeperViewModel : ObservableObject
 
         cell.IsFlagged = !cell.IsFlagged;
         MinesLeft += cell.IsFlagged ? -1 : 1;
-        GameSfx.Flag();
+        Sfx.Flag();
     }
 
     // ════════════════════════════════════════════════════════════
@@ -156,7 +152,7 @@ public partial class MinesweeperViewModel : ObservableObject
         }
 
         FloodReveal(cell.Row, cell.Col);
-        GameSfx.Move();
+        Sfx.Move();
         CheckWin();
     }
 
@@ -170,7 +166,7 @@ public partial class MinesweeperViewModel : ObservableObject
         foreach (var (r, c) in Neighbors(cell.Row, cell.Col))
             if (CellAt(r, c).IsFlagged) flags++;
 
-        if (flags != adj) { GameSfx.Error(); return; }
+        if (flags != adj) { Sfx.Error(); return; }
 
         bool hitMine = false;
         foreach (var (r, c) in Neighbors(cell.Row, cell.Col))
@@ -189,7 +185,7 @@ public partial class MinesweeperViewModel : ObservableObject
         }
 
         if (hitMine) { Lose(); return; }
-        GameSfx.Move();
+        Sfx.Move();
         CheckWin();
     }
 
@@ -280,8 +276,8 @@ public partial class MinesweeperViewModel : ObservableObject
                     cell.Text = "💣";
                 }
 
-        GameSfx.Vibrate();
-        GameSfx.Explode();
+        Sfx.Vibrate();
+        Sfx.Explode();
     }
 
     private void CheckWin()
@@ -297,10 +293,10 @@ public partial class MinesweeperViewModel : ObservableObject
         if (BestTime == 0 || Elapsed < BestTime)
         {
             BestTime = Elapsed;
-            GameScoreStore.Save("minesweeper_best", BestTime);
+            SaveScore(BestTime);
         }
 
-        GameSfx.Win();
+        Sfx.Win();
     }
 
     // ── 计时 ──────────────────────────────────────────────────

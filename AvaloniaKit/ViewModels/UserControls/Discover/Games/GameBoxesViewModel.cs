@@ -1,60 +1,39 @@
-﻿using AvaloniaKit.ViewModels.Messages;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using AvaloniaKit.Messages;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 
-namespace AvaloniaKit.ViewModels.UserControls.Discover.Games
+namespace AvaloniaKit.ViewModels.UserControls.Discover.Games;
+
+/// <summary>游戏盒子：六款游戏的入口列表页</summary>
+public partial class GameBoxesViewModel : PageViewModelBase, ISubPageViewModel
 {
-    public partial class GameBoxesViewModel : ObservableObject
-    {
-        public GameBoxesViewModel()
-        {
+    public override bool ShowTabBar => false;
 
-        }
+    [RelayCommand]
+    private void GoBack()
+        => WeakReferenceMessenger.Default.Send(new NavigateBackFromTetrisMessage());
 
+    [RelayCommand]
+    private void GoTetris()
+        => WeakReferenceMessenger.Default.Send(new NavigateToTetrisMessage());
 
-        [RelayCommand]
-        private void GoTetris()
-        {
-            WeakReferenceMessenger.Default.Send(new NavigateToTetrisMessages());
-        }
+    [RelayCommand]
+    private void GoSnake()
+        => WeakReferenceMessenger.Default.Send(new NavigateToSnakeMessage());
 
-        [RelayCommand]
-        private void GoBack()
-        {
-            WeakReferenceMessenger.Default.Send(new NavigateBackFromTetrisMessage());
-        }
+    [RelayCommand]
+    private void Go2048()
+        => WeakReferenceMessenger.Default.Send(new NavigateToGame2048Message());
 
+    [RelayCommand]
+    private void GoMinesweeper()
+        => WeakReferenceMessenger.Default.Send(new NavigateToMinesweeperMessage());
 
-        [RelayCommand]
-        private void GoSnake()
-        {
-            WeakReferenceMessenger.Default.Send(new NavigateToSnakeMessages());
-        }
+    [RelayCommand]
+    private void GoSudoku()
+        => WeakReferenceMessenger.Default.Send(new NavigateToSudokuMessage());
 
-        [RelayCommand]
-        private void Go2048()
-        {
-            WeakReferenceMessenger.Default.Send(new NavigateToGame2048Messages());
-        }
-
-        [RelayCommand]
-        private void GoMinesweeper()
-        {
-            WeakReferenceMessenger.Default.Send(new NavigateToMinesweeperMessages());
-        }
-
-        [RelayCommand]
-        private void GoSudoku()
-        {
-            WeakReferenceMessenger.Default.Send(new NavigateToSudokuMessages());
-        }
-
-        [RelayCommand]
-        private void GoPlane()
-        {
-            WeakReferenceMessenger.Default.Send(new NavigateToPlaneMessages());
-        }
-
-    }
+    [RelayCommand]
+    private void GoPlane()
+        => WeakReferenceMessenger.Default.Send(new NavigateToPlaneMessage());
 }

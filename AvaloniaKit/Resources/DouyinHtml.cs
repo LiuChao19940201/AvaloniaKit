@@ -1,4 +1,4 @@
-namespace AvaloniaKit.Tools;
+namespace AvaloniaKit.Resources;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  DouyinHtml — 抖音短视频页面（一份 HTML，三端复用）

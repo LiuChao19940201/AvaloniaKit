@@ -1,8 +1,9 @@
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using AvaloniaKit.Api;
+using AvaloniaKit.Extensions;
 using AvaloniaKit.Messages;
 using AvaloniaKit.Services;
-using AvaloniaKit.Tools.Extensions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -18,8 +19,11 @@ using System.Threading.Tasks;
 
 namespace AvaloniaKit.ViewModels.UserControls.Chat;
 
-public partial class NeteasePlayerViewModel : ObservableObject
+public partial class NeteasePlayerViewModel : PageViewModelBase, ISubPageViewModel
 {
+    public override bool ShowTitleBar => false;
+    public override bool ShowTabBar => false;
+
     // ★ 修复：移除使用 HttpClientHandler 的 _coverHttp，统一使用 _http。
     //   HttpClientHandler.MaxAutomaticRedirections 在 Browser/WASM 平台不支持，
     //   会导致静态构造函数抛出 PlatformNotSupportedException，引发白屏。
@@ -34,7 +38,10 @@ public partial class NeteasePlayerViewModel : ObservableObject
             "Referer", "https://music.163.com/");
     }
 
-    private IAudioService? Audio => ServiceLocator.AudioService;
+    private IAudioService? Audio { get; }
+
+    public NeteasePlayerViewModel(IAudioService? audioService = null)
+        => Audio = audioService;
 
     [ObservableProperty] private long _songId = 0;
     [ObservableProperty] private string _songName = "";

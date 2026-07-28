@@ -1,7 +1,6 @@
 using Avalonia.Threading;
+using AvaloniaKit.Messages;
 using AvaloniaKit.Services;
-using AvaloniaKit.Tools.Helper;
-using AvaloniaKit.ViewModels.Messages;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -12,7 +11,7 @@ using System.Timers;
 
 namespace AvaloniaKit.ViewModels.UserControls.Discover.Games;
 
-public partial class TetrisViewModel : ObservableObject
+public partial class TetrisViewModel : GameViewModelBase, ISubPageViewModel
 {
     // ── 常量 ────────────────────────────────────────────────────
     public const int Rows = 20;
@@ -57,7 +56,10 @@ public partial class TetrisViewModel : ObservableObject
     }
 
     // ════════════════════════════════════════════════════════════
-    public TetrisViewModel()
+    protected override string ScoreKey => "tetris";
+
+    public TetrisViewModel(GameSfx sfx, IGameScoreStore scoreStore)
+        : base(sfx, scoreStore)
     {
         for (int r = 0; r < Rows; r++)
             for (int c = 0; c < Cols; c++)
@@ -70,13 +72,7 @@ public partial class TetrisViewModel : ObservableObject
         _nextQueued = RandomType();
 
         // 最高分：从本地存储恢复（三端：SQLite / localStorage）
-        _ = LoadHighScoreAsync();
-    }
-
-    private async Task LoadHighScoreAsync()
-    {
-        int hs = await GameScoreStore.LoadAsync("tetris");
-        await Dispatcher.UIThread.InvokeAsync(() => HighScore = Math.Max(HighScore, hs));
+        LoadScore(v => HighScore = Math.Max(HighScore, v));
     }
 
     // ════════════════════════════════════════════════════════════
@@ -101,7 +97,7 @@ public partial class TetrisViewModel : ObservableObject
         Score = 0; Level = 1; Lines = 0;
         IsGameOver = false; IsPaused = false; IsRunning = true;
         _nextQueued = RandomType();
-        GameSfx.Start();
+        Sfx.Start();
         SpawnPiece();
         StartTimer();
     }
@@ -124,7 +120,7 @@ public partial class TetrisViewModel : ObservableObject
         if (!CanAct() || !CanInput()) return;
 
         //按键音效（三端一致：服务未注册时静默跳过）
-        GameSfx.Move();
+        Sfx.Move();
 
         // 从游戏循环线程更新 Cells 时
         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -142,7 +138,7 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        GameSfx.Move();
+        Sfx.Move();
 
         // 从游戏循环线程更新 Cells 时
         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -160,7 +156,7 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        GameSfx.Move();
+        Sfx.Move();
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -182,7 +178,7 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        GameSfx.Rotate();
+        Sfx.Rotate();
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -206,7 +202,7 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        GameSfx.Drop();
+        Sfx.Drop();
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -307,9 +303,9 @@ public partial class TetrisViewModel : ObservableObject
         if (count > 0)
         {
             // 消行震动 + 差异化音效（四连消放大招音，三端一致，静默容忍）
-            GameSfx.Vibrate();
-            if (count >= 4) GameSfx.Combo();
-            else GameSfx.Merge();
+            Sfx.Vibrate();
+            if (count >= 4) Sfx.Combo();
+            else Sfx.Merge();
         }
         return count;
     }
@@ -322,13 +318,13 @@ public partial class TetrisViewModel : ObservableObject
         if (Score > HighScore)
         {
             HighScore = Score;
-            GameScoreStore.Save("tetris", HighScore);
+            SaveScore(HighScore);
         }
         int newLevel = Lines / 10 + 1;
         if (newLevel != Level)
         {
             Level = newLevel;
-            GameSfx.LevelUp();
+            Sfx.LevelUp();
             UpdateTimerInterval();
         }
     }
@@ -348,11 +344,11 @@ public partial class TetrisViewModel : ObservableObject
             IsGameOver = true;
             IsRunning = false;
             _timer?.Stop();
-            GameSfx.GameOver();
+            Sfx.GameOver();
             if (Score > HighScore)
             {
                 HighScore = Score;
-                GameScoreStore.Save("tetris", HighScore);
+                SaveScore(HighScore);
             }
             Render();
             return;
@@ -475,99 +471,3 @@ public partial class TetrisViewModel : ObservableObject
     private TetrominoType RandomType()
         => (TetrominoType)(_rng.Next(7) + 1);
 }
-
-// ═══════════════════════════════════════════════════════════════
-// 数据模型
-// ═══════════════════════════════════════════════════════════════
-
-/// <summary>方块类型（决定颜色）</summary>
-public enum TetrominoType
-{
-    Empty = 0,
-    I = 1, O = 2, T = 3, S = 4, Z = 5, J = 6, L = 7,
-    Ghost = 8   // 幽灵（落点预览）
-}
-
-/// <summary>游戏板单个格子</summary>
-public partial class CellViewModel : ObservableObject
-{
-    [ObservableProperty] private TetrominoType _type = TetrominoType.Empty;
-    public int Row { get; init; }
-    public int Col { get; init; }
-}
-
-/// <summary>
-/// 所有方块的 4 种旋转形态
-/// index 0 = Empty 占位，1..7 对应 TetrominoType
-/// 每个 int[2] = [deltaRow, deltaCol]，相对于锚点偏移
-/// </summary>
-public static class TetrominoShapes
-{
-    public static readonly int[][][][] All =
-    {
-        Array.Empty<int[][]>(), // 0: Empty
-
-        // 1: I  ████
-        new[]
-        {
-            new[]{new[]{0,0},new[]{0,1},new[]{0,2},new[]{0,3}},
-            new[]{new[]{0,2},new[]{1,2},new[]{2,2},new[]{3,2}},
-            new[]{new[]{2,0},new[]{2,1},new[]{2,2},new[]{2,3}},
-            new[]{new[]{0,1},new[]{1,1},new[]{2,1},new[]{3,1}},
-        },
-        // 2: O  ██
-        //       ██
-        new[]
-        {
-            new[]{new[]{0,0},new[]{0,1},new[]{1,0},new[]{1,1}},
-            new[]{new[]{0,0},new[]{0,1},new[]{1,0},new[]{1,1}},
-            new[]{new[]{0,0},new[]{0,1},new[]{1,0},new[]{1,1}},
-            new[]{new[]{0,0},new[]{0,1},new[]{1,0},new[]{1,1}},
-        },
-        // 3: T
-        new[]
-        {
-            new[]{new[]{0,0},new[]{0,1},new[]{0,2},new[]{1,1}},
-            new[]{new[]{0,1},new[]{1,0},new[]{1,1},new[]{2,1}},
-            new[]{new[]{1,1},new[]{2,0},new[]{2,1},new[]{2,2}},
-            new[]{new[]{0,1},new[]{1,1},new[]{1,2},new[]{2,1}},
-        },
-        // 4: S
-        new[]
-        {
-            new[]{new[]{0,1},new[]{0,2},new[]{1,0},new[]{1,1}},
-            new[]{new[]{0,0},new[]{1,0},new[]{1,1},new[]{2,1}},
-            new[]{new[]{1,1},new[]{1,2},new[]{2,0},new[]{2,1}},
-            new[]{new[]{0,1},new[]{1,1},new[]{1,2},new[]{2,2}},
-        },
-        // 5: Z
-        new[]
-        {
-            new[]{new[]{0,0},new[]{0,1},new[]{1,1},new[]{1,2}},
-            new[]{new[]{0,2},new[]{1,1},new[]{1,2},new[]{2,1}},
-            new[]{new[]{1,0},new[]{1,1},new[]{2,1},new[]{2,2}},
-            new[]{new[]{0,1},new[]{1,0},new[]{1,1},new[]{2,0}},
-        },
-        // 6: J
-        new[]
-        {
-            new[]{new[]{0,0},new[]{1,0},new[]{1,1},new[]{1,2}},
-            new[]{new[]{0,1},new[]{0,2},new[]{1,1},new[]{2,1}},
-            new[]{new[]{1,0},new[]{1,1},new[]{1,2},new[]{2,2}},
-            new[]{new[]{0,1},new[]{1,1},new[]{2,0},new[]{2,1}},
-        },
-        // 7: L
-        new[]
-        {
-            new[]{new[]{0,2},new[]{1,0},new[]{1,1},new[]{1,2}},
-            new[]{new[]{0,1},new[]{1,1},new[]{2,1},new[]{2,2}},
-            new[]{new[]{1,0},new[]{1,1},new[]{1,2},new[]{2,0}},
-            new[]{new[]{0,0},new[]{0,1},new[]{1,1},new[]{2,1}},
-        },
-    };
-}
-
-// ═══════════════════════════════════════════════════════════════
-// TetrisViewModel
-// ═══════════════════════════════════════════════════════════════
-

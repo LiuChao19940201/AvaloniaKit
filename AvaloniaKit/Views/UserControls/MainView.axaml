@@ -13,7 +13,7 @@
 			 xmlns:discoverVm="using:AvaloniaKit.ViewModels.UserControls.Discover"
 			 xmlns:gamesVm="using:AvaloniaKit.ViewModels.UserControls.Discover.Games"
 			 xmlns:profileVm="using:AvaloniaKit.ViewModels.UserControls.Profile"
-			 xmlns:conv="using:AvaloniaKit.Tools.Converters"
+			 xmlns:conv="using:AvaloniaKit.Converters"
 			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 			 mc:Ignorable="d"

@@ -1,6 +1,7 @@
+using AvaloniaKit.Api;
+using AvaloniaKit.Extensions;
 using AvaloniaKit.Messages;
 using AvaloniaKit.Services;
-using AvaloniaKit.Tools.Extensions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -25,8 +26,12 @@ namespace AvaloniaKit.ViewModels.UserControls.Chat;
 //  · 自选码表经 ILocalDataService 持久化（三端 SQLite / localStorage），重开可恢复
 //  · DiscoverFundItem：可「+」一键添加到自选，可点击跳转图表
 // ══════════════════════════════════════════════════════════════════════════════
-public partial class FundTrackerViewModel : ObservableObject
+public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel, INavigationAware
 {
+    public override string Title => "基金自选跟踪";
+    public override bool ShowTitleBar => false;
+    public override bool ShowTabBar => false;
+
     // ── HTTP ─────────────────────────────────────────────────────────────────
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(15) };
 
@@ -38,6 +43,11 @@ public partial class FundTrackerViewModel : ObservableObject
         _http.DefaultRequestHeaders.TryAddWithoutValidation(
             "Referer", "https://fund.eastmoney.com/");
     }
+
+    private readonly ILocalDataService? _localData;
+
+    public FundTrackerViewModel(ILocalDataService? localDataService = null)
+        => _localData = localDataService;
 
     // ── 持久化：ILocalDataService（三端 SQLite / localStorage），代码逗号拼接存储 ──
     //    旧版写安装目录 fund_watchlist.json（AOT 发布后目录只读会静默失败），
@@ -519,13 +529,12 @@ public partial class FundTrackerViewModel : ObservableObject
     {
         // 逗号拼接存库（fire-and-forget，与主题/头像持久化同模式）
         var value = string.Join(",", _watchCodes);
+        if (_localData is null) return;
         _ = Task.Run(async () =>
         {
             try
             {
-                var service = ServiceLocator.LocalDataService;
-                if (service is null) return;
-                await service.SaveSettingAsync(WatchlistKey, value);
+                await _localData.SaveSettingAsync(WatchlistKey, value);
             }
             catch { }
         });
@@ -539,10 +548,9 @@ public partial class FundTrackerViewModel : ObservableObject
     {
         try
         {
-            var service = ServiceLocator.LocalDataService;
-            if (service is null) return;
+            if (_localData is null) return;
 
-            var saved = await service.LoadSettingAsync(WatchlistKey);
+            var saved = await _localData.LoadSettingAsync(WatchlistKey);
 
             // 一次性迁移：库里没有时尝试读旧版 JSON 文件（安装目录），迁入后不再读文件
             if (saved is null)
@@ -551,7 +559,7 @@ public partial class FundTrackerViewModel : ObservableObject
                 if (legacy.Count > 0)
                 {
                     saved = string.Join(",", legacy);
-                    try { await service.SaveSettingAsync(WatchlistKey, saved); } catch { }
+                    try { await _localData.SaveSettingAsync(WatchlistKey, saved); } catch { }
                 }
             }
             if (string.IsNullOrEmpty(saved)) return;
@@ -639,113 +647,4 @@ public partial class FundTrackerViewModel : ObservableObject
 
         return FundItemViewModel.Mock(code);
     }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  发现分类 Tab 标签
-// ══════════════════════════════════════════════════════════════════════════════
-public partial class DiscoverCategory : ObservableObject
-{
-    public string Label { get; set; } = "";
-    public string FundType { get; set; } = "";
-    public int Index { get; set; } = 0;
-    /// <summary>Material 风格 24×24 矢量图标 Path 数据（替代 emoji，与全局图标风格统一）</summary>
-    public string Icon { get; set; } = "";
-    [ObservableProperty] private bool _isSelected = false;
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  发现基金卡片
-// ══════════════════════════════════════════════════════════════════════════════
-public partial class DiscoverFundItem : ObservableObject
-{
-    [ObservableProperty] private string _code = "";
-    [ObservableProperty] private string _name = "";
-    [ObservableProperty] private string _navStr = "--";
-    [ObservableProperty] private double _changeRaw = 0;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(AddBtnText))]
-    [NotifyPropertyChangedFor(nameof(AddBtnBg))]
-    [NotifyPropertyChangedFor(nameof(AddBtnFg))]
-    private bool _isAdded = false;
-
-    public bool IsUp => ChangeRaw >= 0;
-    public string ChangeText => (IsUp ? "+" : "") + ChangeRaw.ToString("F2") + "%";
-    public string ChangeColor => IsUp ? "#C0392B" : "#18B06A";
-    public string ChangeBg => IsUp ? "#1AE05C5C" : "#1A18B06A";
-    public string AddBtnText => IsAdded ? "✓" : "+";
-    public string AddBtnBg => IsAdded ? "#E8F5E9" : "#E8F0FE";
-    public string AddBtnFg => IsAdded ? "#18B06A" : "#1565C0";
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  原有模型（完全不变）
-// ══════════════════════════════════════════════════════════════════════════════
-public partial class SearchResultItem : ObservableObject
-{
-    [ObservableProperty] private string _code = "";
-    [ObservableProperty] private string _name = "";
-    [ObservableProperty] private bool _isSelected = false;
-    public string Display => $"{Code}  {Name}";
-}
-
-public partial class FundItemViewModel : ObservableObject
-{
-    [ObservableProperty] private string _code = "";
-    [ObservableProperty] private string _name = "";
-    [ObservableProperty] private string _lastNav = "--";
-    [ObservableProperty] private string _estNav = "--";
-    [ObservableProperty] private string _changeRaw = "0";
-    [ObservableProperty] private string _updatedAt = "--";
-    [ObservableProperty] private string _source = "--";
-    [ObservableProperty] private bool _isMock = false;
-
-    public bool IsUp => double.TryParse(ChangeRaw, out double v) && v >= 0;
-    public string ChangeText
-    {
-        get
-        {
-            if (!double.TryParse(ChangeRaw, out double v)) return "--";
-            return (v >= 0 ? "+" : "") + v.ToString("F2") + "%";
-        }
-    }
-    public string ChipBackground => IsUp ? "#1AE05C5C" : "#1A18B06A";
-    public string ChipForeground => IsUp ? "#C0392B" : "#18B06A";
-
-    private static readonly (string code, string name, double nav, double chg)[] _mocks =
-    {
-        ("000001", "华夏成长混合",    1.8423,  0.56),
-        ("110022", "易方达消费行业",  3.2100, -0.32),
-        ("161725", "招商中证白酒",    1.1560,  1.20),
-        ("000961", "天弘沪深300ETF",  1.3210,  0.08),
-        ("270042", "广发纳斯达克100", 2.6780, -0.75),
-    };
-
-    internal static FundItemViewModel Mock(string code)
-    {
-        foreach (var (c, n, nav, chg) in _mocks)
-            if (c == code)
-                return new FundItemViewModel
-                {
-                    Code = c,
-                    Name = n,
-                    LastNav = nav.ToString("F4"),
-                    EstNav = "--",
-                    ChangeRaw = chg.ToString("F2"),
-                    UpdatedAt = "离线",
-                    Source = "本地缓存",
-                    IsMock = true,
-                };
-        return new FundItemViewModel { Code = code, Name = code, IsMock = true };
-    }
-}
-
-// ── JsonElement 扩展（不变）──────────────────────────────────────────────────
-internal static class JsonElementExtensions
-{
-    internal static string? TryGet(this JsonElement el, string prop)
-        => el.TryGetProperty(prop, out var v) && v.ValueKind != JsonValueKind.Null
-            ? v.GetString() ?? v.GetRawText()
-            : null;
 }

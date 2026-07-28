@@ -22,8 +22,11 @@
     <InvariantGlobalization>false</InvariantGlobalization>
     <OptimizationPreference>Speed</OptimizationPreference>
   </PropertyGroup>
+
   <ItemGroup>
-    <None Include="..\..\..\资源文件\Avalonia.Desktop项目发布在Linux上运行.doc" Link="Avalonia.Desktop项目发布在Linux上运行.doc" />
+    <!-- 三端（Desktop/Android/iOS）共用同一份 SQLite 实现（namespace AvaloniaKit.Data），
+         链接文件编译，避免各端维护重复代码 -->
+    <Compile Include="..\Shared\Data\SqliteLocalDataService.cs" Link="Data\SqliteLocalDataService.cs" />
   </ItemGroup>
 
   <!-- ★ 防裁剪保根：sqlite-net 是反射 ORM，实体类的属性 getter/setter 与

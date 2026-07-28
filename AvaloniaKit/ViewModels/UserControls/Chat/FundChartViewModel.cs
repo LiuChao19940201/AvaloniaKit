@@ -1,5 +1,7 @@
+using AvaloniaKit.Api;
+using AvaloniaKit.Extensions;
 using AvaloniaKit.Messages;
-using AvaloniaKit.Tools.Extensions;
+using AvaloniaKit.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -23,8 +25,11 @@ namespace AvaloniaKit.ViewModels.UserControls.Chat;
 //  · RecentRows       — 最近 5 条净值（含日涨跌）
 //  · HasRecentRows    — 控制最近净值表格可见性
 // ══════════════════════════════════════════════════════════════════════════════
-public partial class FundChartViewModel : ObservableObject
+public partial class FundChartViewModel : PageViewModelBase, ISubPageViewModel
 {
+    public override string Title => "净值走势";
+    public override bool ShowTabBar => false;
+
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(15) };
 
     static FundChartViewModel()
@@ -279,14 +284,7 @@ public partial class FundChartViewModel : ObservableObject
     }
 }
 
-// ── 净值数据点（不变）────────────────────────────────────────────────────────
-public class NavPoint
-{
-    public DateTime Date { get; set; }
-    public double Nav { get; set; }
-}
-
-// ── 最近净值行（新增）────────────────────────────────────────────────────────
+// ── 最近净值行 ───────────────────────────────────────────────────────────────
 public class RecentNavRow
 {
     public string DateStr { get; set; } = "";

@@ -1,6 +1,7 @@
 using Android.App;
 using Android.Content;
 using AvaloniaKit.Services;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -11,11 +12,13 @@ public class AndroidImagePickerService : IImagePickerService
     public const int RequestCode = 2001;
 
     private static TaskCompletionSource<Stream?>? _tcs;
-    private readonly Activity _activity;
 
-    public AndroidImagePickerService(Activity activity)
+    // Activity 延迟访问器：注册发生在 Application.OnCreate（Activity 尚未创建）
+    private readonly Func<Activity> _getActivity;
+
+    public AndroidImagePickerService(Func<Activity> activityProvider)
     {
-        _activity = activity;
+        _getActivity = activityProvider;
     }
 
     public Task<Stream?> PickImageAsync()
@@ -24,7 +27,7 @@ public class AndroidImagePickerService : IImagePickerService
 
         var intent = new Intent(Intent.ActionPick);
         intent.SetType("image/*");
-        _activity.StartActivityForResult(intent, RequestCode);
+        _getActivity().StartActivityForResult(intent, RequestCode);
 
         return _tcs.Task;
     }

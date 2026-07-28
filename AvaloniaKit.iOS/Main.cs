@@ -1,15 +1,12 @@
 using UIKit;
 
-namespace AvaloniaKit.iOS
+namespace AvaloniaKit.iOS;
+
+public class Application
 {
-    public class Application
+    // 应用主入口：如需替换 AppDelegate，可在此指定其他委托类型
+    private static void Main(string[] args)
     {
-        // This is the main entry point of the application.
-        private static void Main(string[] args)
-        {
-            // if you want to use a different Application Delegate class from "AppDelegate"
-            // you can specify it here.
-            UIApplication.Main(args, null, typeof(AppDelegate));
-        }
+        UIApplication.Main(args, null, typeof(AppDelegate));
     }
 }

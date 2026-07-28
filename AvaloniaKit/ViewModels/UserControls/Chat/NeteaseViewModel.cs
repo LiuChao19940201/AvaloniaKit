@@ -1,19 +1,15 @@
-using Avalonia.Media.Imaging;
-using Avalonia.Threading;
+using AvaloniaKit.Api;
+using AvaloniaKit.Extensions;
 using AvaloniaKit.Messages;
 using AvaloniaKit.Services;
-using AvaloniaKit.Tools.Extensions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Net.Http;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,10 +18,14 @@ namespace AvaloniaKit.ViewModels.UserControls.Chat;
 // ══════════════════════════════════════════════════════════════════════════════
 //  NeteaseViewModel  — 网易云音乐主页
 // ══════════════════════════════════════════════════════════════════════════════
-public partial class NeteaseViewModel : ObservableObject,
+public partial class NeteaseViewModel : PageViewModelBase, ISubPageViewModel, INavigationAware,
     IRecipient<NeteasePlayPrevMessage>,
     IRecipient<NeteasePlayNextMessage>
 {
+    public override string Title => "网易云音乐";
+    public override bool ShowTitleBar => false;
+    public override bool ShowTabBar => false;
+
     // ── HTTP ─────────────────────────────────────────────────────────────────
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(15) };
 
@@ -36,8 +36,11 @@ public partial class NeteaseViewModel : ObservableObject,
         _http.DefaultRequestHeaders.TryAddWithoutValidation("Referer", "https://music.163.com/");
     }
 
-    public NeteaseViewModel()
+    private readonly IAudioService? _audio;
+
+    public NeteaseViewModel(IAudioService? audioService = null)
     {
+        _audio = audioService;
         WeakReferenceMessenger.Default.RegisterAll(this);
     }
 
@@ -47,12 +50,6 @@ public partial class NeteaseViewModel : ObservableObject,
     [NotifyPropertyChangedFor(nameof(IsRankActive))]
     [NotifyPropertyChangedFor(nameof(IsSearchActive))]
     private int _activeTab = 0; // 0=推荐 1=排行榜 2=搜索
-    partial void OnActiveTabChanged(int value)
-    {
-        OnPropertyChanged(nameof(IsRecommendActive));
-        OnPropertyChanged(nameof(IsRankActive));
-        OnPropertyChanged(nameof(IsSearchActive));
-    }
 
     public bool IsRecommendActive => ActiveTab == 0;
     public bool IsRankActive => ActiveTab == 1;
@@ -141,9 +138,8 @@ public partial class NeteaseViewModel : ObservableObject,
     // ── ★ 同步迷你播放栏状态（从播放器页返回时调用）─────────────────────────
     public void SyncPlaybackState()
     {
-        var audio = ServiceLocator.AudioService;
-        if (audio != null && CurrentSong != null)
-            IsPlaying = audio.IsPlaying;
+        if (_audio != null && CurrentSong != null)
+            IsPlaying = _audio.IsPlaying;
     }
 
     // ── 导航 ─────────────────────────────────────────────────────────────────
@@ -179,11 +175,10 @@ public partial class NeteaseViewModel : ObservableObject,
     {
         if (CurrentSong is null) return;
 
-        var audio = ServiceLocator.AudioService;
-        if (audio != null && audio.DurationMs > 0)
+        if (_audio != null && _audio.DurationMs > 0)
         {
-            if (audio.IsPlaying) { audio.Pause(); IsPlaying = false; }
-            else { audio.Resume(); IsPlaying = true; }
+            if (_audio.IsPlaying) { _audio.Pause(); IsPlaying = false; }
+            else { _audio.Resume(); IsPlaying = true; }
             return;
         }
         // 音频尚未加载（异常场景）：进播放器页重新加载
@@ -627,146 +622,3 @@ public partial class NeteaseViewModel : ObservableObject,
         return false;
     }
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  数据模型
-// ══════════════════════════════════════════════════════════════════════════════
-public partial class NeteaseSongItem : ObservableObject
-{
-    // ── 静态共享 HTTP 客户端 + 缓存 ──────────────────────────────────────────
-    private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(8) };
-
-    // ★ 修复：封面下载也必须带 UA/Referer，否则部分图片 CDN 会拒绝导致封面加载失败
-    static NeteaseSongItem()
-    {
-        _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0");
-        _http.DefaultRequestHeaders.TryAddWithoutValidation("Referer", "https://music.163.com/");
-    }
-
-    // key = thumbUrl, value = Bitmap(可能为null代表加载失败)
-    private static readonly ConcurrentDictionary<string, Bitmap?> _bmpCache = new();
-
-    // ── 数据字段 ──────────────────────────────────────────────────────────────
-    public long Id { get; set; }
-    public string Name { get; set; } = "";
-    public string Artist { get; set; } = "";
-    public string Album { get; set; } = "";
-    public long DurationMs { get; set; }
-
-    public string DurationText
-    {
-        get
-        {
-            if (DurationMs <= 0) return "";
-            var ts = TimeSpan.FromMilliseconds(DurationMs);
-            return $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
-        }
-    }
-
-    // ── CoverUrl：设置后自动触发异步封面加载 ─────────────────────────────────
-    private string _coverUrl = "";
-    public string CoverUrl
-    {
-        get => _coverUrl;
-        set
-        {
-            if (_coverUrl == value) return;
-            _coverUrl = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(HasCover));
-            // 重置 Bitmap，触发重新加载
-            _coverBitmap = null;
-            OnPropertyChanged(nameof(CoverBitmap));
-            if (!string.IsNullOrEmpty(value))
-                _ = LoadCoverAsync(value);
-        }
-    }
-
-    public bool HasCover => !string.IsNullOrEmpty(_coverUrl);
-
-    // ── CoverBitmap：XAML 绑定此属性显示封面 ─────────────────────────────────
-    private Bitmap? _coverBitmap;
-    public Bitmap? CoverBitmap
-    {
-        get
-        {
-            // 如果还没开始加载但有 URL，触发一次加载
-            if (_coverBitmap == null && !string.IsNullOrEmpty(_coverUrl))
-                _ = LoadCoverAsync(_coverUrl);
-            return _coverBitmap;
-        }
-    }
-
-    // ── 异步加载封面 ──────────────────────────────────────────────────────────
-    private async System.Threading.Tasks.Task LoadCoverAsync(string url)
-    {
-        // 加上缩略图参数（网易云支持）
-        string thumbUrl = url.Contains('?')
-            ? $"{url}&param=120y120"
-            : $"{url}?param=120y120";
-
-        // 命中缓存
-        if (_bmpCache.TryGetValue(thumbUrl, out var cached))
-        {
-            if (_coverBitmap != cached)
-            {
-                _coverBitmap = cached;
-                await Dispatcher.UIThread.InvokeAsync(
-                    () => OnPropertyChanged(nameof(CoverBitmap)));
-            }
-            return;
-        }
-
-        // 防止重复下载
-        if (!_bmpCache.TryAdd(thumbUrl, null))
-        {
-            // 另一个实例正在下载，等一会再读
-            await System.Threading.Tasks.Task.Delay(600);
-            if (_bmpCache.TryGetValue(thumbUrl, out var cached2))
-            {
-                _coverBitmap = cached2;
-                await Dispatcher.UIThread.InvokeAsync(
-                    () => OnPropertyChanged(nameof(CoverBitmap)));
-            }
-            return;
-        }
-
-        try
-        {
-            // 封面 CDN(music.126.net) 自带 CORS:*，三端均可直连
-            byte[] bytes = await _http.GetByteArrayAsync(thumbUrl).ConfigureAwait(false);
-            using var ms = new MemoryStream(bytes);
-            var bmp = new Bitmap(ms);
-
-            _bmpCache[thumbUrl] = bmp;   // 更新缓存
-            _coverBitmap = bmp;
-
-            // 回 UI 线程通知绑定
-            await Dispatcher.UIThread.InvokeAsync(
-                () => OnPropertyChanged(nameof(CoverBitmap)));
-        }
-        catch
-        {
-            _bmpCache[thumbUrl] = null;   // 失败也缓存，避免重试风暴
-        }
-    }
-
-    /// <summary>清空封面内存缓存（可在低内存时调用）</summary>
-    public static void ClearCoverCache()
-    {
-        foreach (var bmp in _bmpCache.Values)
-            bmp?.Dispose();
-        _bmpCache.Clear();
-    }
-}
-
-
-public partial class NeteaseRankCategory : ObservableObject
-{
-    public string Name { get; set; } = "";
-    public long ListId { get; set; }
-    public int Index { get; set; }
-    [ObservableProperty] private bool _isSelected = false;
-}
-

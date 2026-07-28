@@ -19,6 +19,7 @@
     <PackageReference Include="Irihi.Ursa.Themes.Semi" />
     <PackageReference Include="Semi.Avalonia" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 
   <ItemGroup>

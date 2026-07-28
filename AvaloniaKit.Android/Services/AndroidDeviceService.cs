@@ -20,22 +20,25 @@ namespace AvaloniaKit.Android.Services;
 
 public class AndroidDeviceService : IDeviceService
 {
-    private readonly Activity _activity;
+    // Activity 经由延迟访问器获取：注册发生在 Application.OnCreate（Activity 尚未创建），
+    // 实际调用均在 MainActivity 就绪之后
+    private readonly Func<Activity> _getActivity;
+    private Activity CurrentActivity => _getActivity();
     private const int RequestCodeCamera = 1001;
 
-    public AndroidDeviceService(Activity activity)
+    public AndroidDeviceService(Func<Activity> activityProvider)
     {
-        _activity = activity;
+        _getActivity = activityProvider;
     }
 
     public void OpenCamera()
     {
         // Android 6.0+ CAMERA 是危险权限，需要运行时申请
-        if (ContextCompat.CheckSelfPermission(_activity, global::Android.Manifest.Permission.Camera)
+        if (ContextCompat.CheckSelfPermission(CurrentActivity, global::Android.Manifest.Permission.Camera)
             != Permission.Granted)
         {
             ActivityCompat.RequestPermissions(
-                _activity,
+                CurrentActivity,
                 [global::Android.Manifest.Permission.Camera],
                 RequestCodeCamera);
             return;
@@ -45,7 +48,7 @@ public class AndroidDeviceService : IDeviceService
         // 不再依赖 ResolveActivity（Android 11+ 包可见性限制），直接尝试启动
         try
         {
-            _activity.StartActivity(intent);
+            CurrentActivity.StartActivity(intent);
         }
         catch (ActivityNotFoundException)
         {
@@ -58,7 +61,7 @@ public class AndroidDeviceService : IDeviceService
         if (OperatingSystem.IsAndroidVersionAtLeast(31))
         {
             // Android 12+ 推荐使用 VibratorManager
-            if (_activity.GetSystemService(Context.VibratorManagerService) is VibratorManager vibratorManager)
+            if (CurrentActivity.GetSystemService(Context.VibratorManagerService) is VibratorManager vibratorManager)
             {
                 var vibrator = vibratorManager.DefaultVibrator;
                 vibrator.Vibrate(VibrationEffect.CreateOneShot(300, VibrationEffect.DefaultAmplitude));
@@ -66,7 +69,7 @@ public class AndroidDeviceService : IDeviceService
         }
         else if (OperatingSystem.IsAndroidVersionAtLeast(26))
         {
-            if (_activity.GetSystemService(Context.VibratorService) is Vibrator vibrator)
+            if (CurrentActivity.GetSystemService(Context.VibratorService) is Vibrator vibrator)
             {
                 vibrator.Vibrate(VibrationEffect.CreateOneShot(300, VibrationEffect.DefaultAmplitude));
             }
@@ -74,7 +77,7 @@ public class AndroidDeviceService : IDeviceService
         else
         {
 #pragma warning disable CA1422
-            if (_activity.GetSystemService(Context.VibratorService) is Vibrator vibrator)
+            if (CurrentActivity.GetSystemService(Context.VibratorService) is Vibrator vibrator)
             {
                 vibrator.Vibrate(300);
             }
@@ -86,7 +89,7 @@ public class AndroidDeviceService : IDeviceService
     {
         var intent = new Intent(Intent.ActionPick);
         intent.SetType("image/*");
-        _activity.StartActivity(intent);
+        CurrentActivity.StartActivity(intent);
     }
 
     public void PlaySound()
@@ -105,7 +108,7 @@ public class AndroidDeviceService : IDeviceService
             try
             {
                 var uri = RingtoneManager.GetDefaultUri(RingtoneType.Notification);
-                var ringtone = RingtoneManager.GetRingtone(_activity, uri);
+                var ringtone = RingtoneManager.GetRingtone(CurrentActivity, uri);
                 ringtone?.Play();
             }
             catch
@@ -173,7 +176,7 @@ public class AndroidDeviceService : IDeviceService
 
         if (OperatingSystem.IsAndroidVersionAtLeast(31))
         {
-            var bluetoothManager = _activity.GetSystemService(Context.BluetoothService) as BluetoothManager;
+            var bluetoothManager = CurrentActivity.GetSystemService(Context.BluetoothService) as BluetoothManager;
             adapter = bluetoothManager?.Adapter;
         }
         else
@@ -190,7 +193,7 @@ public class AndroidDeviceService : IDeviceService
 
     public string GetGpsLocation()
     {
-        if (_activity.GetSystemService(Context.LocationService) is not LocationManager locationManager)
+        if (CurrentActivity.GetSystemService(Context.LocationService) is not LocationManager locationManager)
             return "无法获取定位服务";
 
         var isGpsEnabled = locationManager.IsProviderEnabled(LocationManager.GpsProvider);
@@ -207,7 +210,7 @@ public class AndroidDeviceService : IDeviceService
 
     public string GetNfcStatus()
     {
-        var nfcAdapter = NfcAdapter.GetDefaultAdapter(_activity);
+        var nfcAdapter = NfcAdapter.GetDefaultAdapter(CurrentActivity);
         if (nfcAdapter is null)
             return "设备不支持 NFC";
         return nfcAdapter.IsEnabled ? "已开启" : "已关闭";
@@ -215,14 +218,14 @@ public class AndroidDeviceService : IDeviceService
 
     public string GetWifiStatus()
     {
-        if (_activity.GetSystemService(Context.WifiService) is not WifiManager wifiManager)
+        if (CurrentActivity.GetSystemService(Context.WifiService) is not WifiManager wifiManager)
             return "无法获取 WiFi 服务";
         return wifiManager.IsWifiEnabled ? "已开启" : "已关闭";
     }
 
     public void ToggleFlashlight(bool on)
     {
-        if (_activity.GetSystemService(Context.CameraService) is not CameraManager cameraManager)
+        if (CurrentActivity.GetSystemService(Context.CameraService) is not CameraManager cameraManager)
             return;
 
         var cameraId = cameraManager.GetCameraIdList().FirstOrDefault();
@@ -234,7 +237,7 @@ public class AndroidDeviceService : IDeviceService
 
     public void SetBrightness(float level)
     {
-        var window = _activity.Window;
+        var window = CurrentActivity.Window;
         if (window is null) return;
 
         var layoutParams = window.Attributes;
@@ -246,7 +249,7 @@ public class AndroidDeviceService : IDeviceService
 
     public string GetSensorInfo()
     {
-        if (_activity.GetSystemService(Context.SensorService) is not SensorManager sensorManager)
+        if (CurrentActivity.GetSystemService(Context.SensorService) is not SensorManager sensorManager)
             return "无法获取传感器服务";
 
         var sensors = sensorManager.GetSensorList(SensorType.All);
@@ -264,20 +267,20 @@ public class AndroidDeviceService : IDeviceService
 
         if (OperatingSystem.IsAndroidVersionAtLeast(26))
         {
-            if (_activity.GetSystemService(Context.NotificationService) is NotificationManager notificationManager)
+            if (CurrentActivity.GetSystemService(Context.NotificationService) is NotificationManager notificationManager)
             {
                 var channel = new NotificationChannel(channelId, "测试通知", NotificationImportance.High);
                 notificationManager.CreateNotificationChannel(channel);
             }
         }
 
-        var notification = new NotificationCompat.Builder(_activity, channelId)!
+        var notification = new NotificationCompat.Builder(CurrentActivity, channelId)!
             .SetContentTitle(title)!
             .SetContentText(message)!
             .SetSmallIcon(global::Android.Resource.Drawable.IcDialogInfo)!
             .SetAutoCancel(true)!
             .Build();
 
-        NotificationManagerCompat.From(_activity)!.Notify(1001, notification);
+        NotificationManagerCompat.From(CurrentActivity)!.Notify(1001, notification);
     }
 }

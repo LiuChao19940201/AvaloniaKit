@@ -33,6 +33,16 @@
     <!-- ═══ MVVM ═══ -->
     <PackageVersion Include="CommunityToolkit.Mvvm"          Version="*" />
 
+    <!-- ═══ 依赖注入（组合根：共享层注册 ViewModel，各平台注册平台服务） ═══ -->
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="*" />
+
+    <!-- ═══ UI 单元测试（Headless 无窗口环境模拟真实输入） ═══
+         Avalonia.Headless.XUnit 12.x 基于 xunit v3（独立可执行模型，项目须为 Exe） -->
+    <PackageVersion Include="Avalonia.Headless.XUnit"        Version="*" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk"         Version="*" />
+    <PackageVersion Include="xunit.v3"                       Version="*" />
+    <PackageVersion Include="xunit.runner.visualstudio"      Version="*" />
+
     <!-- ═══ SQLite（Desktop + Android） ═══ -->
     <PackageVersion Include="sqlite-net-pcl"                 Version="*" />
     <PackageVersion Include="SQLitePCLRaw.bundle_green"      Version="*" />

@@ -39,5 +39,15 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- 网易云音频 CDN 存在 http 明文直链（与 Android usesCleartextTraffic 放行一致） -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>用于选择头像图片</string>
+	<key>NSCameraUsageDescription</key>
+	<string>用于服务页的相机功能演示</string>
 </dict>
 </plist>

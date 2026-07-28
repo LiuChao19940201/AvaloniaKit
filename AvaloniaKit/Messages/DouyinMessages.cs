@@ -1,4 +1,4 @@
-namespace AvaloniaKit.ViewModels.Messages;
+namespace AvaloniaKit.Messages;
 
 /// <summary>导航到抖音页</summary>
 public record NavigateToDouyinMessage;
