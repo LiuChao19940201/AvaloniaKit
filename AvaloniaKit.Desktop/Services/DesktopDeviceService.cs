@@ -20,6 +20,12 @@ public class DesktopDeviceService : IDeviceService
     public void PlaySound()
     {
         // fire-and-forget：合成 120ms 正弦提示音，任何失败静默（与 Android 端兜底一致）
+        PlayTone(880, 120);
+    }
+
+    // 参数化提示音合成：游戏差异化音效（移动/旋转/消行/吃食/爆炸…）三端一致
+    public void PlayTone(double frequency, int durationMs)
+    {
         Task.Run(() =>
         {
             try
@@ -27,16 +33,16 @@ public class DesktopDeviceService : IDeviceService
                 var beep = new SignalGenerator(44100, 1)
                 {
                     Gain = 0.15,
-                    Frequency = 880,
+                    Frequency = frequency,
                     Type = SignalGeneratorType.Sin,
-                }.Take(TimeSpan.FromMilliseconds(120));
+                }.Take(TimeSpan.FromMilliseconds(durationMs));
 
                 using var waveOut = new WaveOutEvent();
                 using var done = new ManualResetEventSlim();
                 waveOut.PlaybackStopped += (_, _) => done.Set();
                 waveOut.Init(beep);
                 waveOut.Play();
-                done.Wait(1000);
+                done.Wait(durationMs + 1000);
             }
             catch { }
         });

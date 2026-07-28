@@ -113,17 +113,24 @@ let _beepCtx = null;
 
 // WebAudio 振荡器合成短促提示音（对齐 Android ToneGenerator PropBeep）
 export function deviceBeep() {
+    deviceTone(880, 120);
+}
+
+// 参数化提示音：频率 Hz / 时长 ms（游戏差异化音效，三端一致）
+export function deviceTone(freq, ms) {
     try {
         _beepCtx = _beepCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (_beepCtx.state === "suspended") _beepCtx.resume();
         const osc  = _beepCtx.createOscillator();
         const gain = _beepCtx.createGain();
+        const dur  = Math.max(0.02, ms / 1000);
         osc.type = "sine";
-        osc.frequency.value = 880;
+        osc.frequency.value = freq;
         gain.gain.setValueAtTime(0.15, _beepCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, _beepCtx.currentTime + 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, _beepCtx.currentTime + dur);
         osc.connect(gain).connect(_beepCtx.destination);
         osc.start();
-        osc.stop(_beepCtx.currentTime + 0.12);
+        osc.stop(_beepCtx.currentTime + dur);
     } catch (e) { /* 音频上下文被策略拦截时静默 */ }
 }
 

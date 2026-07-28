@@ -83,6 +83,18 @@
 		<DataTemplate DataType="{x:Type gamesVm:SnakeViewModel}">
 			<games:SnakeUserControl />
 		</DataTemplate>
+		<DataTemplate DataType="{x:Type gamesVm:Game2048ViewModel}">
+			<games:Game2048UserControl />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type gamesVm:MinesweeperViewModel}">
+			<games:MinesweeperUserControl />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type gamesVm:SudokuViewModel}">
+			<games:SudokuUserControl />
+		</DataTemplate>
+		<DataTemplate DataType="{x:Type gamesVm:PlaneViewModel}">
+			<games:PlaneUserControl />
+		</DataTemplate>
 
 		<DataTemplate DataType="{x:Type profileVm:ProfileViewModel}">
 			<profile:ProfileUserControl />

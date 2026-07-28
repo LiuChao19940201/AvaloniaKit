@@ -1,0 +1,264 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:AvaloniaKit.ViewModels.UserControls.Discover.Games"
+             xmlns:converters="clr-namespace:AvaloniaKit.Converters"
+             x:Class="AvaloniaKit.Views.UserControls.Discover.Games.Game2048UserControl"
+             d:DesignWidth="350" d:DesignHeight="700"
+             x:DataType="vm:Game2048ViewModel">
+
+    <Design.DataContext>
+        <vm:Game2048ViewModel/>
+    </Design.DataContext>
+
+    <UserControl.Resources>
+        <converters:Tile2048ToBrushConverter x:Key="TileBrush"/>
+        <converters:Tile2048ToForegroundConverter x:Key="TileFg"/>
+        <converters:Tile2048ToTextConverter x:Key="TileText"/>
+        <converters:Tile2048ToFontSizeConverter x:Key="TileFont"/>
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto"
+          Background="{DynamicResource SemiColorBg1}">
+
+        <!-- ══ 导航栏 ══ -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource SemiColorBg0}"
+                BorderBrush="{DynamicResource SemiColorBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="0,6">
+            <Grid ColumnDefinitions="48,*,48">
+
+                <TextBlock Grid.Column="0" Grid.ColumnSpan="3"
+                           Text="2048"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource SemiColorText0}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+
+                <Button Grid.Column="0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding GoBackCommand}"
+                        Padding="12,6"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        IsTabStop="False"
+                        Focusable="False">
+                    <Viewbox Width="20" Height="20">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="M15.41 7.41L14 6L8 12L14 18L15.41 16.59L10.83 12Z"
+                                  Fill="{DynamicResource SemiColorText0}"/>
+                        </Canvas>
+                    </Viewbox>
+                </Button>
+
+                <!-- 重开 -->
+                <Button Grid.Column="2"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding StartCommand}"
+                        Padding="12,6"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        IsVisible="{Binding IsRunning}"
+                        IsTabStop="False"
+                        Focusable="False">
+                    <Viewbox Width="20" Height="20">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="M12 5V2L8 6l4 4V7c3.31 0 6 2.69 6 6a6 6 0 0 1-6 6 6 6 0 0 1-6-6H4a8 8 0 0 0 8 8 8 8 0 0 0 8-8 8 8 0 0 0-8-8z"
+                                  Fill="{DynamicResource SemiColorText0}"/>
+                        </Canvas>
+                    </Viewbox>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- ══ 分数栏 ══ -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,*" Margin="16,10,16,4">
+            <Border Grid.Column="0" Margin="0,0,5,0"
+                    Background="{DynamicResource SemiColorBg0}" CornerRadius="8" Padding="8,6">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="分数" FontSize="10" Foreground="{DynamicResource SemiColorText2}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding Score}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource SemiColorText0}" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Margin="5,0,0,0"
+                    Background="{DynamicResource SemiColorBg0}" CornerRadius="8" Padding="8,6">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="最高分" FontSize="10" Foreground="{DynamicResource SemiColorText2}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding HighScore}" FontSize="20" FontWeight="Bold" Foreground="#FF6B35" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ══ 棋盘 ══ -->
+        <Border Grid.Row="2" Margin="16,8"
+                CornerRadius="10"
+                Background="#2C2C2E"
+                ClipToBounds="True"
+                VerticalAlignment="Center"
+                x:Name="BoardBorder">
+            <Panel>
+                <Viewbox Stretch="Uniform">
+                    <ItemsControl ItemsSource="{Binding Tiles}" Margin="6">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="4" Columns="4"
+                                             Width="296" Height="296"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TileCell">
+                                <Border Margin="4" CornerRadius="6"
+                                        Background="{Binding Value, Converter={StaticResource TileBrush}}">
+                                    <TextBlock Text="{Binding Value, Converter={StaticResource TileText}}"
+                                               FontSize="{Binding Value, Converter={StaticResource TileFont}}"
+                                               FontWeight="Bold"
+                                               Foreground="{Binding Value, Converter={StaticResource TileFg}}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Viewbox>
+
+                <!-- 未开始遮罩 -->
+                <Border IsVisible="{Binding !IsRunning}" Background="#CC000000" CornerRadius="10">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+
+                        <StackPanel IsVisible="{Binding IsGameOver}" HorizontalAlignment="Center" Spacing="4">
+                            <TextBlock Text="GAME OVER"
+                                       FontSize="24" FontWeight="Bold"
+                                       Foreground="#FF6B35"
+                                       HorizontalAlignment="Center" LetterSpacing="2"/>
+                            <TextBlock Text="{Binding Score, StringFormat='得分：{0}'}"
+                                       FontSize="14" Foreground="#CCFFFFFF"
+                                       HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                        </StackPanel>
+
+                        <TextBlock IsVisible="{Binding !IsGameOver}"
+                                   Text="2048"
+                                   FontSize="28" FontWeight="Bold"
+                                   Foreground="White"
+                                   HorizontalAlignment="Center" LetterSpacing="6"/>
+
+                        <Button IsVisible="{Binding !IsGameOver}"
+                                Command="{Binding StartCommand}"
+                                Content="开 始 游 戏"
+                                HorizontalAlignment="Center"
+                                Padding="28,12" CornerRadius="24"
+                                Background="#FF6B35" Foreground="White"
+                                FontWeight="SemiBold" FontSize="14" BorderThickness="0"
+                                IsTabStop="False" Focusable="False"/>
+
+                        <Button IsVisible="{Binding IsGameOver}"
+                                Command="{Binding StartCommand}"
+                                Content="重新开始"
+                                HorizontalAlignment="Center"
+                                Padding="28,12" CornerRadius="24"
+                                Background="#FF6B35" Foreground="White"
+                                FontWeight="SemiBold" FontSize="14" BorderThickness="0"
+                                IsTabStop="False" Focusable="False"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 到达 2048 胜利遮罩 -->
+                <Border IsVisible="{Binding IsWin}" Background="#CC000000" CornerRadius="10">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16">
+                        <TextBlock Text="🎉 2048！"
+                                   FontSize="28" FontWeight="Bold"
+                                   Foreground="#FFD600"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="恭喜达成 2048，继续挑战更大数字？"
+                                   FontSize="13" Foreground="#CCFFFFFF"
+                                   HorizontalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                            <Button Command="{Binding ContinuePlayingCommand}"
+                                    Content="继续挑战"
+                                    Padding="22,10" CornerRadius="20"
+                                    Background="#FF6B35" Foreground="White"
+                                    FontWeight="SemiBold" FontSize="13" BorderThickness="0"
+                                    IsTabStop="False" Focusable="False"/>
+                            <Button Command="{Binding StartCommand}"
+                                    Content="重新开始"
+                                    Padding="22,10" CornerRadius="20"
+                                    Background="#55FFFFFF" Foreground="White"
+                                    FontWeight="SemiBold" FontSize="13" BorderThickness="0"
+                                    IsTabStop="False" Focusable="False"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Panel>
+        </Border>
+
+        <!-- ══ 控制按钮 ══ -->
+        <Border Grid.Row="3"
+                Background="{DynamicResource SemiColorBg0}"
+                BorderBrush="{DynamicResource SemiColorBorder}"
+                BorderThickness="0,1,0,0"
+                Padding="10">
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*,*,*,*">
+
+                <RepeatButton Grid.Row="0" Grid.Column="2"
+                              Command="{Binding MoveUpCommand}"
+                              Classes="Success" Theme="{DynamicResource SolidButton}"
+                              CornerRadius="8" Margin="0,0,0,6"
+                              IsTabStop="False" Focusable="False"
+                              ToolTip.Tip="上 (↑/W)">
+                    <Viewbox Width="40" Height="30">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"
+                                  Fill="{DynamicResource SemiColorText0}"/>
+                        </Canvas>
+                    </Viewbox>
+                </RepeatButton>
+
+                <RepeatButton Grid.Row="1" Grid.Column="0"
+                              Command="{Binding MoveLeftCommand}"
+                              Classes="Success" Theme="{DynamicResource SolidButton}"
+                              CornerRadius="8"
+                              IsTabStop="False" Focusable="False"
+                              ToolTip.Tip="左 (←/A)">
+                    <Viewbox Width="50" Height="40">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"
+                                  Fill="{DynamicResource SemiColorText0}"/>
+                        </Canvas>
+                    </Viewbox>
+                </RepeatButton>
+
+                <RepeatButton Grid.Row="1" Grid.Column="2"
+                              Command="{Binding MoveDownCommand}"
+                              Classes="Success" Theme="{DynamicResource SolidButton}"
+                              CornerRadius="8"
+                              IsTabStop="False" Focusable="False"
+                              ToolTip.Tip="下 (↓/S)">
+                    <Viewbox Width="50" Height="40">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"
+                                  Fill="{DynamicResource SemiColorText0}"/>
+                        </Canvas>
+                    </Viewbox>
+                </RepeatButton>
+
+                <RepeatButton Grid.Row="1" Grid.Column="4"
+                              Command="{Binding MoveRightCommand}"
+                              Classes="Success" Theme="{DynamicResource SolidButton}"
+                              CornerRadius="8"
+                              IsTabStop="False" Focusable="False"
+                              ToolTip.Tip="右 (→/D)">
+                    <Viewbox Width="50" Height="40">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"
+                                  Fill="{DynamicResource SemiColorText0}"/>
+                        </Canvas>
+                    </Viewbox>
+                </RepeatButton>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

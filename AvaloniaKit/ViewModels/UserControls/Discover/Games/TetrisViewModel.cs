@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using AvaloniaKit.Services;
+using AvaloniaKit.Tools.Helper;
 using AvaloniaKit.ViewModels.Messages;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -21,6 +22,7 @@ public partial class TetrisViewModel : ObservableObject
 
     // ── 可观察属性 ──────────────────────────────────────────────
     [ObservableProperty] private int _score;
+    [ObservableProperty] private int _highScore;
     [ObservableProperty] private int _level = 1;
     [ObservableProperty] private int _lines;
     [ObservableProperty] private bool _isGameOver;
@@ -66,6 +68,15 @@ public partial class TetrisViewModel : ObservableObject
                 PreviewCells.Add(new CellViewModel { Row = r, Col = c });
 
         _nextQueued = RandomType();
+
+        // 最高分：从本地存储恢复（三端：SQLite / localStorage）
+        _ = LoadHighScoreAsync();
+    }
+
+    private async Task LoadHighScoreAsync()
+    {
+        int hs = await GameScoreStore.LoadAsync("tetris");
+        await Dispatcher.UIThread.InvokeAsync(() => HighScore = Math.Max(HighScore, hs));
     }
 
     // ════════════════════════════════════════════════════════════
@@ -90,6 +101,7 @@ public partial class TetrisViewModel : ObservableObject
         Score = 0; Level = 1; Lines = 0;
         IsGameOver = false; IsPaused = false; IsRunning = true;
         _nextQueued = RandomType();
+        GameSfx.Start();
         SpawnPiece();
         StartTimer();
     }
@@ -112,7 +124,7 @@ public partial class TetrisViewModel : ObservableObject
         if (!CanAct() || !CanInput()) return;
 
         //按键音效（三端一致：服务未注册时静默跳过）
-        ServiceLocator.DeviceService?.PlaySound();
+        GameSfx.Move();
 
         // 从游戏循环线程更新 Cells 时
         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -130,7 +142,7 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        ServiceLocator.DeviceService?.PlaySound();
+        GameSfx.Move();
 
         // 从游戏循环线程更新 Cells 时
         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -148,7 +160,7 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        ServiceLocator.DeviceService?.PlaySound();
+        GameSfx.Move();
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -170,7 +182,7 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        ServiceLocator.DeviceService?.PlaySound();
+        GameSfx.Rotate();
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -194,7 +206,7 @@ public partial class TetrisViewModel : ObservableObject
     {
         if (!CanAct() || !CanInput()) return;
 
-        ServiceLocator.DeviceService?.PlaySound();
+        GameSfx.Drop();
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -281,10 +293,6 @@ public partial class TetrisViewModel : ObservableObject
             }
             if (!full) continue;
 
-            //消行震动和音效（三端一致：桌面/Web 端 Vibrate 为空实现，静默跳过）
-            ServiceLocator.DeviceService?.Vibrate();
-            ServiceLocator.DeviceService?.PlaySound();
-
             // 向下移动上方所有行
             for (int rr = r; rr > 0; rr--)
                 for (int c = 0; c < Cols; c++)
@@ -295,6 +303,14 @@ public partial class TetrisViewModel : ObservableObject
             count++;
             r++; // 重新检查当前行（已被上方行替换）
         }
+
+        if (count > 0)
+        {
+            // 消行震动 + 差异化音效（四连消放大招音，三端一致，静默容忍）
+            GameSfx.Vibrate();
+            if (count >= 4) GameSfx.Combo();
+            else GameSfx.Merge();
+        }
         return count;
     }
 
@@ -303,10 +319,16 @@ public partial class TetrisViewModel : ObservableObject
         int[] pts = { 0, 100, 300, 500, 800 };
         Score += pts[Math.Min(cleared, 4)] * Level;
         Lines += cleared;
+        if (Score > HighScore)
+        {
+            HighScore = Score;
+            GameScoreStore.Save("tetris", HighScore);
+        }
         int newLevel = Lines / 10 + 1;
         if (newLevel != Level)
         {
             Level = newLevel;
+            GameSfx.LevelUp();
             UpdateTimerInterval();
         }
     }
@@ -326,6 +348,12 @@ public partial class TetrisViewModel : ObservableObject
             IsGameOver = true;
             IsRunning = false;
             _timer?.Stop();
+            GameSfx.GameOver();
+            if (Score > HighScore)
+            {
+                HighScore = Score;
+                GameScoreStore.Save("tetris", HighScore);
+            }
             Render();
             return;
         }

@@ -15,11 +15,17 @@ namespace AvaloniaKit.Browser.Services;
 public partial class BrowserDeviceService : IDeviceService
 {
     [JSImport("deviceBeep", "audio")] private static partial void JsBeep();
+    [JSImport("deviceTone", "audio")] private static partial void JsTone(double freq, int ms);
     [JSImport("deviceVibrate", "audio")] private static partial void JsVibrate(int ms);
 
     public void PlaySound()
     {
         try { JsBeep(); } catch { }
+    }
+
+    public void PlayTone(double frequency, int durationMs)
+    {
+        try { JsTone(frequency, durationMs); } catch { }
     }
 
     public void Vibrate()

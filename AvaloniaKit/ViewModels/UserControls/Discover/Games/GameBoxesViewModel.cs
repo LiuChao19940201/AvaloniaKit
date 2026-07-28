@@ -32,5 +32,29 @@ namespace AvaloniaKit.ViewModels.UserControls.Discover.Games
             WeakReferenceMessenger.Default.Send(new NavigateToSnakeMessages());
         }
 
+        [RelayCommand]
+        private void Go2048()
+        {
+            WeakReferenceMessenger.Default.Send(new NavigateToGame2048Messages());
+        }
+
+        [RelayCommand]
+        private void GoMinesweeper()
+        {
+            WeakReferenceMessenger.Default.Send(new NavigateToMinesweeperMessages());
+        }
+
+        [RelayCommand]
+        private void GoSudoku()
+        {
+            WeakReferenceMessenger.Default.Send(new NavigateToSudokuMessages());
+        }
+
+        [RelayCommand]
+        private void GoPlane()
+        {
+            WeakReferenceMessenger.Default.Send(new NavigateToPlaneMessages());
+        }
+
     }
 }

@@ -83,16 +83,30 @@
             <StackPanel Margin="8" Spacing="8">
 
                 <Border Background="{DynamicResource SemiColorBg0}" CornerRadius="8" Padding="8">
-                    <StackPanel>
-                        <TextBlock Text="分数" FontSize="10"/>
-                        <TextBlock Text="{Binding Score}" FontSize="20" FontWeight="Bold"/>
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="分数" FontSize="10" Foreground="{DynamicResource SemiColorText2}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding Score}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource SemiColorText0}" HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Border>
 
                 <Border Background="{DynamicResource SemiColorBg0}" CornerRadius="8" Padding="8">
-                    <StackPanel>
-                        <TextBlock Text="长度" FontSize="10"/>
-                        <TextBlock Text="{Binding Length}" FontSize="20" FontWeight="Bold"/>
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="最高分" FontSize="10" Foreground="{DynamicResource SemiColorText2}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding HighScore}" FontSize="16" FontWeight="Bold" Foreground="#FF6B35" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{DynamicResource SemiColorBg0}" CornerRadius="8" Padding="8">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="长度" FontSize="10" Foreground="{DynamicResource SemiColorText2}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding Length}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource SemiColorText0}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{DynamicResource SemiColorBg0}" CornerRadius="8" Padding="8">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="速度" FontSize="10" Foreground="{DynamicResource SemiColorText2}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding SpeedLevel}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource SemiColorText0}" HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Border>
 
@@ -179,24 +193,37 @@
             </Border>
         </Grid>
 
-        <!-- 控制按钮（复用你俄罗斯方块布局） -->
-        <Border Grid.Row="2" Padding="10">
-            <Grid ColumnDefinitions="*,*,*,*,*">
+        <!-- 控制按钮（样式与俄罗斯方块统一：SolidButton 主题） -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource SemiColorBg0}"
+                BorderBrush="{DynamicResource SemiColorBorder}"
+                BorderThickness="0,1,0,0"
+                Padding="10">
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*,*,*,*">
 
-                <RepeatButton Grid.Column="1"
+                <!-- Row0 Col2：上 -->
+                <RepeatButton Grid.Row="0" Grid.Column="2"
                               Command="{Binding UpCommand}"
-                              IsTabStop="False" Focusable="False">
+                              Classes="Success" Theme="{DynamicResource SolidButton}"
+                              CornerRadius="8" Margin="0,0,0,6"
+                              IsTabStop="False" Focusable="False"
+                              ToolTip.Tip="上 (↑/W)">
                     <Viewbox Width="40" Height="30">
                         <Canvas Width="24" Height="24">
-                            <Path Data="M12 5v14l11-7z" Fill="{DynamicResource SemiColorText0}"/>
+                            <Path Data="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"
+                                  Fill="{DynamicResource SemiColorText0}"/>
                         </Canvas>
                     </Viewbox>
                 </RepeatButton>
 
-                <RepeatButton Grid.Column="0"
+                <!-- Row1 Col0：左 -->
+                <RepeatButton Grid.Row="1" Grid.Column="0"
                               Command="{Binding LeftCommand}"
-                              IsTabStop="False" Focusable="False">
-                    <Viewbox Width="40" Height="30">
+                              Classes="Success" Theme="{DynamicResource SolidButton}"
+                              CornerRadius="8"
+                              IsTabStop="False" Focusable="False"
+                              ToolTip.Tip="左 (←/A)">
+                    <Viewbox Width="50" Height="40">
                         <Canvas Width="24" Height="24">
                             <Path Data="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"
                                   Fill="{DynamicResource SemiColorText0}"/>
@@ -204,10 +231,14 @@
                     </Viewbox>
                 </RepeatButton>
 
-                <RepeatButton Grid.Column="2"
+                <!-- Row1 Col2：下 -->
+                <RepeatButton Grid.Row="1" Grid.Column="2"
                               Command="{Binding DownCommand}"
-                              IsTabStop="False" Focusable="False">
-                    <Viewbox Width="40" Height="30">
+                              Classes="Success" Theme="{DynamicResource SolidButton}"
+                              CornerRadius="8"
+                              IsTabStop="False" Focusable="False"
+                              ToolTip.Tip="下 (↓/S)">
+                    <Viewbox Width="50" Height="40">
                         <Canvas Width="24" Height="24">
                             <Path Data="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"
                                   Fill="{DynamicResource SemiColorText0}"/>
@@ -215,10 +246,14 @@
                     </Viewbox>
                 </RepeatButton>
 
-                <RepeatButton Grid.Column="4"
+                <!-- Row1 Col4：右 -->
+                <RepeatButton Grid.Row="1" Grid.Column="4"
                               Command="{Binding RightCommand}"
-                              IsTabStop="False" Focusable="False">
-                    <Viewbox Width="40" Height="30">
+                              Classes="Success" Theme="{DynamicResource SolidButton}"
+                              CornerRadius="8"
+                              IsTabStop="False" Focusable="False"
+                              ToolTip.Tip="右 (→/D)">
+                    <Viewbox Width="50" Height="40">
                         <Canvas Width="24" Height="24">
                             <Path Data="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"
                                   Fill="{DynamicResource SemiColorText0}"/>

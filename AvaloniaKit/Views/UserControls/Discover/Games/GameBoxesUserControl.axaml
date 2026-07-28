@@ -96,7 +96,7 @@
 					</Button>
 
 					<!-- 飞机大战 -->
-					<Button Background="Transparent">
+					<Button Background="Transparent" Command="{Binding GoPlaneCommand}">
 						<StackPanel HorizontalAlignment="Center">
 							<Border Width="64" Height="64" CornerRadius="16"
 									Background="#3498DB">
@@ -112,7 +112,7 @@
 					</Button>
 
 					<!-- 数独 -->
-					<Button Background="Transparent">
+					<Button Background="Transparent" Command="{Binding GoSudokuCommand}">
 						<StackPanel HorizontalAlignment="Center">
 							<Border Width="64" Height="64" CornerRadius="16"
 									Background="#9B59B6">
@@ -132,13 +132,14 @@
 					</Button>
 
 					<!-- 2048 -->
-					<Button Background="Transparent">
+					<Button Background="Transparent" Command="{Binding Go2048Command}">
 						<StackPanel HorizontalAlignment="Center">
 							<Border Width="64" Height="64" CornerRadius="16"
 									Background="#F39C12">
 								<TextBlock Text="2048"
 										   FontSize="18"
 										   FontWeight="Bold"
+										   Foreground="White"
 										   HorizontalAlignment="Center"
 										   VerticalAlignment="Center"/>
 							</Border>
@@ -149,7 +150,7 @@
 					</Button>
 
 					<!-- 扫雷 -->
-					<Button Background="Transparent">
+					<Button Background="Transparent" Command="{Binding GoMinesweeperCommand}">
 						<StackPanel HorizontalAlignment="Center">
 							<Border Width="64" Height="64" CornerRadius="16"
 									Background="#E74C3C">

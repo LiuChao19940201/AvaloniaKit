@@ -119,6 +119,54 @@ public class AndroidDeviceService : IDeviceService
         }
     }
 
+    // 参数化提示音：AudioTrack 静态模式播放 PCM 正弦波（带指数衰减包络，
+    // 与 Desktop NAudio / Browser WebAudio 音色对齐），任何失败降级到 PlaySound
+    public void PlayTone(double frequency, int durationMs)
+    {
+        System.Threading.Tasks.Task.Run(() =>
+        {
+            try
+            {
+                const int sampleRate = 44100;
+                int samples = sampleRate * durationMs / 1000;
+                var pcm = new short[samples];
+                for (int i = 0; i < samples; i++)
+                {
+                    double t = (double)i / sampleRate;
+                    // 指数衰减包络，避免爆音
+                    double env = Math.Exp(-3.0 * i / samples);
+                    pcm[i] = (short)(Math.Sin(2 * Math.PI * frequency * t) * env * short.MaxValue * 0.3);
+                }
+
+                var track = new AudioTrack.Builder()
+                    .SetAudioAttributes(new AudioAttributes.Builder()
+                        .SetUsage(AudioUsageKind.Game)!
+                        .SetContentType(AudioContentType.Sonification)!
+                        .Build()!)
+                    .SetAudioFormat(new AudioFormat.Builder()
+                        .SetEncoding(Encoding.Pcm16bit)!
+                        .SetSampleRate(sampleRate)!
+                        .SetChannelMask(ChannelOut.Mono)!
+                        .Build()!)
+                    .SetTransferMode(AudioTrackMode.Static)
+                    .SetBufferSizeInBytes(pcm.Length * 2)
+                    .Build();
+
+                track.Write(pcm, 0, pcm.Length);
+                track.Play();
+                // 播放完成后释放（Static 模式 Play 立即返回）
+                System.Threading.Thread.Sleep(durationMs + 50);
+                track.Stop();
+                track.Release();
+            }
+            catch
+            {
+                // AudioTrack 失败降级到 ToneGenerator 提示音
+                try { PlaySound(); } catch { }
+            }
+        });
+    }
+
     public string GetBluetoothStatus()
     {
         BluetoothAdapter? adapter;

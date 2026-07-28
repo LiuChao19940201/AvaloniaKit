@@ -1,28 +1,30 @@
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using AvaloniaKit.ViewModels.UserControls.Discover.Games;
-using System;
 
 namespace AvaloniaKit.Views.UserControls.Discover.Games;
 
-public partial class SnakeUserControl : UserControl
+public partial class PlaneUserControl : UserControl
 {
-    private SnakeViewModel? Vm => DataContext as SnakeViewModel;
+    private PlaneViewModel? Vm => DataContext as PlaneViewModel;
 
-    // 棋盘滑动手势判定（移动端友好：直接在棋盘上滑动改向）
-    private Point _swipeStart;
-    private bool _swipeTracking;
-    private const double SwipeMin = 24;
+    private bool _dragging;
 
-    public SnakeUserControl()
+    public PlaneUserControl()
     {
         InitializeComponent();
         Focusable = true;
         KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.None);
 
-        // Tunnel + handledEventsToo：与 Tetris 一致，优先于子控件拦截键盘
+        // 游戏区拖动跟手（GetPosition(GameArea) 自动换算 Viewbox 缩放后的逻辑坐标）
+        GameArea.AddHandler(PointerPressedEvent, OnAreaPressed,
+            RoutingStrategies.Tunnel, handledEventsToo: true);
+        GameArea.AddHandler(PointerMovedEvent, OnAreaMoved,
+            RoutingStrategies.Tunnel, handledEventsToo: true);
+        GameArea.AddHandler(PointerReleasedEvent, OnAreaReleased,
+            RoutingStrategies.Tunnel, handledEventsToo: true);
+
         AddHandler(KeyDownEvent, OnKeyDownTunnel,
             RoutingStrategies.Tunnel, handledEventsToo: true);
     }
@@ -33,33 +35,31 @@ public partial class SnakeUserControl : UserControl
         Focus();
     }
 
-    /// <summary>点击按钮后焦点会被抢走，松手时拉回来保证键盘继续可用</summary>
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
-
-        // 棋盘滑动改向：位移超过阈值时按主轴方向转向
-        if (_swipeTracking && Vm is { IsRunning: true } vm)
-        {
-            var delta = e.GetPosition(this) - _swipeStart;
-            if (Math.Abs(delta.X) >= SwipeMin || Math.Abs(delta.Y) >= SwipeMin)
-            {
-                if (Math.Abs(delta.X) > Math.Abs(delta.Y))
-                    (delta.X > 0 ? vm.RightCommand : vm.LeftCommand).Execute(null);
-                else
-                    (delta.Y > 0 ? vm.DownCommand : vm.UpCommand).Execute(null);
-            }
-        }
-        _swipeTracking = false;
-
         Focus();
     }
 
-    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    private void OnAreaPressed(object? sender, PointerPressedEventArgs e)
     {
-        base.OnPointerPressed(e);
-        _swipeStart = e.GetPosition(this);
-        _swipeTracking = true;
+        if (Vm is not { IsRunning: true } vm) return;
+        _dragging = true;
+        var p = e.GetPosition(GameArea);
+        // 手指上方 30px 处控制机身，避免手指遮挡（鼠标同样适用）
+        vm.MovePlayerTo(p.X, p.Y - 30);
+    }
+
+    private void OnAreaMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_dragging || Vm is not { IsRunning: true } vm) return;
+        var p = e.GetPosition(GameArea);
+        vm.MovePlayerTo(p.X, p.Y - 30);
+    }
+
+    private void OnAreaReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _dragging = false;
     }
 
     private void OnKeyDownTunnel(object? sender, KeyEventArgs e)
@@ -70,31 +70,30 @@ public partial class SnakeUserControl : UserControl
         {
             case Key.Left:
             case Key.A:
-                Vm.LeftCommand.Execute(null);
+                Vm.MoveLeftCommand.Execute(null);
                 e.Handled = true;
                 break;
 
             case Key.Right:
             case Key.D:
-                Vm.RightCommand.Execute(null);
+                Vm.MoveRightCommand.Execute(null);
                 e.Handled = true;
                 break;
 
             case Key.Up:
             case Key.W:
-                Vm.UpCommand.Execute(null);
+                Vm.MoveUpCommand.Execute(null);
                 e.Handled = true;
                 break;
 
             case Key.Down:
             case Key.S:
-                Vm.DownCommand.Execute(null);
+                Vm.MoveDownCommand.Execute(null);
                 e.Handled = true;
                 break;
 
             case Key.P:
             case Key.Escape:
-            case Key.Space:
                 Vm.TogglePauseCommand.Execute(null);
                 e.Handled = true;
                 break;

@@ -1,0 +1,229 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:AvaloniaKit.ViewModels.UserControls.Discover.Games"
+             x:Class="AvaloniaKit.Views.UserControls.Discover.Games.PlaneUserControl"
+             d:DesignWidth="350" d:DesignHeight="700"
+             x:DataType="vm:PlaneViewModel">
+
+    <Design.DataContext>
+        <vm:PlaneViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,Auto,*"
+          Background="{DynamicResource SemiColorBg1}">
+
+        <!-- ══ 导航栏 ══ -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource SemiColorBg0}"
+                BorderBrush="{DynamicResource SemiColorBorder}"
+                BorderThickness="0,0,0,1"
+                Padding="0,6">
+            <Grid ColumnDefinitions="48,*,48">
+
+                <TextBlock Grid.Column="0" Grid.ColumnSpan="3"
+                           Text="飞机大战"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource SemiColorText0}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+
+                <Button Grid.Column="0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding GoBackCommand}"
+                        Padding="12,6"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        IsTabStop="False"
+                        Focusable="False">
+                    <Viewbox Width="20" Height="20">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="M15.41 7.41L14 6L8 12L14 18L15.41 16.59L10.83 12Z"
+                                  Fill="{DynamicResource SemiColorText0}"/>
+                        </Canvas>
+                    </Viewbox>
+                </Button>
+
+                <!-- 暂停/继续 -->
+                <Button Grid.Column="2"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding TogglePauseCommand}"
+                        Padding="12,6"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        IsVisible="{Binding IsRunning}"
+                        IsTabStop="False"
+                        Focusable="False">
+                    <Panel>
+                        <Viewbox Width="20" Height="20" IsVisible="{Binding !IsPaused}">
+                            <Canvas Width="24" Height="24">
+                                <Rectangle Canvas.Left="5"  Canvas.Top="4" Width="4" Height="16"
+                                           Fill="{DynamicResource SemiColorText0}" RadiusX="1" RadiusY="1"/>
+                                <Rectangle Canvas.Left="15" Canvas.Top="4" Width="4" Height="16"
+                                           Fill="{DynamicResource SemiColorText0}" RadiusX="1" RadiusY="1"/>
+                            </Canvas>
+                        </Viewbox>
+                        <Viewbox Width="20" Height="20" IsVisible="{Binding IsPaused}">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="M8 5v14l11-7z" Fill="{DynamicResource SemiColorText0}"/>
+                            </Canvas>
+                        </Viewbox>
+                    </Panel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- ══ 信息栏 ══ -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*" Margin="16,10,16,4">
+            <Border Grid.Column="0" Margin="0,0,3,0"
+                    Background="{DynamicResource SemiColorBg0}" CornerRadius="8" Padding="6">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="分数" FontSize="10" Foreground="{DynamicResource SemiColorText2}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding Score}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource SemiColorText0}" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Margin="3,0"
+                    Background="{DynamicResource SemiColorBg0}" CornerRadius="8" Padding="6">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="最高分" FontSize="10" Foreground="{DynamicResource SemiColorText2}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding HighScore}" FontSize="16" FontWeight="Bold" Foreground="#FF6B35" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Margin="3,0"
+                    Background="{DynamicResource SemiColorBg0}" CornerRadius="8" Padding="6">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="生命" FontSize="10" Foreground="{DynamicResource SemiColorText2}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding Lives}" FontSize="16" FontWeight="Bold" Foreground="#EF5350" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="3" Margin="3,0,0,0"
+                    Background="{DynamicResource SemiColorBg0}" CornerRadius="8" Padding="6">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="波次" FontSize="10" Foreground="{DynamicResource SemiColorText2}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding Wave}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource SemiColorText0}" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ══ 游戏区（逻辑 320×480，Viewbox 自适应）══ -->
+        <Border Grid.Row="2" Margin="16,8,16,16"
+                CornerRadius="10"
+                ClipToBounds="True">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Offset="0" Color="#0D1B2A"/>
+                    <GradientStop Offset="1" Color="#1B263B"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Panel>
+                <Viewbox Stretch="Uniform">
+                    <Panel x:Name="GameArea" Width="320" Height="480"
+                           Background="Transparent">
+
+                        <!-- 活动实体：子弹 / 敌机 / 爆炸帧 -->
+                        <ItemsControl ItemsSource="{Binding Sprites}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Canvas/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:Sprite">
+                                    <Panel Width="{Binding W}" Height="{Binding H}">
+                                        <Panel.RenderTransform>
+                                            <TranslateTransform X="{Binding X}" Y="{Binding Y}"/>
+                                        </Panel.RenderTransform>
+
+                                        <!-- 子弹 -->
+                                        <Rectangle IsVisible="{Binding IsBullet}"
+                                                   Fill="#FFEB3B" RadiusX="2" RadiusY="2"/>
+
+                                        <!-- 敌机（倒扣三角机身） -->
+                                        <Path IsVisible="{Binding IsEnemy}"
+                                              Data="M12,22 L2,4 L12,9 L22,4 Z"
+                                              Fill="#EF5350" Stretch="Fill"/>
+
+                                        <!-- 爆炸帧 -->
+                                        <Ellipse IsVisible="{Binding IsBoom}"
+                                                 Fill="#FF9800" Opacity="0.85"/>
+                                    </Panel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- 玩家战机 -->
+                        <Path Width="36" Height="36"
+                              HorizontalAlignment="Left" VerticalAlignment="Top"
+                              Data="M12,2 L14.5,9 L22,18 L14,15.5 L12,22 L10,15.5 L2,18 L9.5,9 Z"
+                              Fill="#4FC3F7" Stretch="Fill"
+                              Opacity="{Binding PlayerOpacity}">
+                            <Path.RenderTransform>
+                                <TranslateTransform X="{Binding PlayerX}" Y="{Binding PlayerY}"/>
+                            </Path.RenderTransform>
+                        </Path>
+                    </Panel>
+                </Viewbox>
+
+                <!-- 未开始遮罩 -->
+                <Border IsVisible="{Binding !IsRunning}" Background="#CC000000" CornerRadius="10">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
+
+                        <StackPanel IsVisible="{Binding IsGameOver}" HorizontalAlignment="Center" Spacing="4">
+                            <TextBlock Text="GAME OVER"
+                                       FontSize="24" FontWeight="Bold"
+                                       Foreground="#FF6B35"
+                                       HorizontalAlignment="Center" LetterSpacing="2"/>
+                            <TextBlock Text="{Binding Score, StringFormat='得分：{0}'}"
+                                       FontSize="14" Foreground="#CCFFFFFF"
+                                       HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel IsVisible="{Binding !IsGameOver}" HorizontalAlignment="Center" Spacing="6">
+                            <TextBlock Text="✈ PLANE WAR"
+                                       FontSize="26" FontWeight="Bold"
+                                       Foreground="White"
+                                       HorizontalAlignment="Center" LetterSpacing="4"/>
+                            <TextBlock Text="拖动机身躲避敌机，自动开火"
+                                       FontSize="12" Foreground="#AAFFFFFF"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+
+                        <Button IsVisible="{Binding !IsGameOver}"
+                                Command="{Binding StartCommand}"
+                                Content="开 始 游 戏"
+                                HorizontalAlignment="Center"
+                                Padding="28,12" CornerRadius="24"
+                                Background="#FF6B35" Foreground="White"
+                                FontWeight="SemiBold" FontSize="14" BorderThickness="0"
+                                IsTabStop="False" Focusable="False"/>
+
+                        <Button IsVisible="{Binding IsGameOver}"
+                                Command="{Binding StartCommand}"
+                                Content="重新开始"
+                                HorizontalAlignment="Center"
+                                Padding="28,12" CornerRadius="24"
+                                Background="#FF6B35" Foreground="White"
+                                FontWeight="SemiBold" FontSize="14" BorderThickness="0"
+                                IsTabStop="False" Focusable="False"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 暂停遮罩 -->
+                <Border IsVisible="{Binding IsPaused}" Background="#AA000000" CornerRadius="10">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
+                        <TextBlock Text="⏸" FontSize="36" HorizontalAlignment="Center"/>
+                        <TextBlock Text="已  暂  停"
+                                   FontSize="18" FontWeight="SemiBold"
+                                   Foreground="White" HorizontalAlignment="Center" LetterSpacing="4"/>
+                        <TextBlock Text="按 P 或右上角继续"
+                                   FontSize="12" Foreground="#AAFFFFFF" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Panel>
+        </Border>
+    </Grid>
+</UserControl>

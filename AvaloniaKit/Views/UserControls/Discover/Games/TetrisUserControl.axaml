@@ -27,6 +27,15 @@
                 Padding="0,6">
             <Grid ColumnDefinitions="48,*,48,48">
 
+                <!-- 标题横跨整行真居中（按钮浮于两侧，避免硬编码 Margin 补偿） -->
+                <TextBlock Grid.Column="0" Grid.ColumnSpan="4"
+                           Text="俄罗斯方块"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource SemiColorText0}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+
                 <Button Grid.Column="0"
                         Background="Transparent"
                         BorderThickness="0"
@@ -43,14 +52,6 @@
                         </Canvas>
                     </Viewbox>
                 </Button>
-
-                <TextBlock Grid.Column="1"
-                           Text="俄罗斯方块"
-                           FontSize="16" Margin="80 0 0 0"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource SemiColorText0}"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"/>
 
                 <Button Grid.Column="2"
                         Background="Transparent"
@@ -116,6 +117,13 @@
                     <StackPanel HorizontalAlignment="Center">
                         <TextBlock Text="分数" FontSize="10" Foreground="{DynamicResource SemiColorText2}" HorizontalAlignment="Center"/>
                         <TextBlock Text="{Binding Score}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource SemiColorText0}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{DynamicResource SemiColorBg0}" CornerRadius="8" Padding="8,6">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="最高分" FontSize="10" Foreground="{DynamicResource SemiColorText2}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding HighScore}" FontSize="16" FontWeight="Bold" Foreground="#FF6B35" HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Border>
 

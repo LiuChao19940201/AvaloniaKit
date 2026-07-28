@@ -30,7 +30,11 @@ public partial class MainWindowViewModel : ObservableObject,
     IRecipient<NavigateBackFromGameBoxesMessage>,
     IRecipient<NavigateToTetrisMessages>,
     IRecipient<NavigateBackFromTetrisMessage>,
-    IRecipient<NavigateToSnakeMessages>
+    IRecipient<NavigateToSnakeMessages>,
+    IRecipient<NavigateToGame2048Messages>,
+    IRecipient<NavigateToMinesweeperMessages>,
+    IRecipient<NavigateToSudokuMessages>,
+    IRecipient<NavigateToPlaneMessages>
 {
     // ── 页面 ViewModel 实例 ──
     private readonly ChatViewModel _chatVm = new();
@@ -38,6 +42,10 @@ public partial class MainWindowViewModel : ObservableObject,
     private readonly DiscoverViewModel _discoverVm = new();
     private readonly TetrisViewModel _tetrisVm = new();
     private readonly SnakeViewModel _snakeVm = new();
+    private readonly Game2048ViewModel _game2048Vm = new();
+    private readonly MinesweeperViewModel _minesweeperVm = new();
+    private readonly SudokuViewModel _sudokuVm = new();
+    private readonly PlaneViewModel _planeVm = new();
     private readonly GameBoxesViewModel _gameBoxesVm = new(); 
     private readonly ProfileViewModel _profileVm = new();
     private readonly ServiceViewModel _serviceVm = new();
@@ -96,6 +104,10 @@ public partial class MainWindowViewModel : ObservableObject,
                                            and not FundTrackerViewModel
                                            and not TetrisViewModel
                                            and not SnakeViewModel
+                                           and not Game2048ViewModel
+                                           and not MinesweeperViewModel
+                                           and not SudokuViewModel
+                                           and not PlaneViewModel
                                            and not NeteaseViewModel
                                            and not NeteasePlayerViewModel
                                            and not WeatherViewModel
@@ -106,6 +118,10 @@ public partial class MainWindowViewModel : ObservableObject,
                                         and not FundChartViewModel
                                         and not TetrisViewModel
                                         and not SnakeViewModel
+                                        and not Game2048ViewModel
+                                        and not MinesweeperViewModel
+                                        and not SudokuViewModel
+                                        and not PlaneViewModel
                                         and not NeteaseViewModel
                                         and not NeteasePlayerViewModel
                                         and not GameBoxesViewModel
@@ -123,6 +139,10 @@ public partial class MainWindowViewModel : ObservableObject,
                                          or DouyinViewModel
                                          or TetrisViewModel
                                          or SnakeViewModel
+                                         or Game2048ViewModel
+                                         or MinesweeperViewModel
+                                         or SudokuViewModel
+                                         or PlaneViewModel
                                          or GameBoxesViewModel;
 
     public bool TryGoBackFromSubPage()
@@ -138,6 +158,10 @@ public partial class MainWindowViewModel : ObservableObject,
             DouyinViewModel vm => vm.GoBackCommand,
             TetrisViewModel vm => vm.GoBackCommand,
             SnakeViewModel vm => vm.GoBackCommand,
+            Game2048ViewModel vm => vm.GoBackCommand,
+            MinesweeperViewModel vm => vm.GoBackCommand,
+            SudokuViewModel vm => vm.GoBackCommand,
+            PlaneViewModel vm => vm.GoBackCommand,
             GameBoxesViewModel vm => vm.GoBackCommand,
             _ => null,
         };
@@ -244,4 +268,16 @@ public partial class MainWindowViewModel : ObservableObject,
     {
         CurrentPage = _snakeVm;
     }
+
+    public void Receive(NavigateToGame2048Messages message)
+        => CurrentPage = _game2048Vm;
+
+    public void Receive(NavigateToMinesweeperMessages message)
+        => CurrentPage = _minesweeperVm;
+
+    public void Receive(NavigateToSudokuMessages message)
+        => CurrentPage = _sudokuVm;
+
+    public void Receive(NavigateToPlaneMessages message)
+        => CurrentPage = _planeVm;
 }
