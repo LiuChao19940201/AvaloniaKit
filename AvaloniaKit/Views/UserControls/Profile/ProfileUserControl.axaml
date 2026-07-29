@@ -49,9 +49,9 @@
 								   FontSize="22" FontWeight="Bold"
 								   Foreground="{DynamicResource SemiColorText0}"/>
 						<StackPanel Orientation="Horizontal" Spacing="4">
-							<TextBlock Text="微信号：" FontSize="13"
+							<TextBlock Text="版本号：" FontSize="13"
 									   Foreground="{DynamicResource SemiColorText2}"/>
-							<TextBlock Text="{Binding WechatId}" FontSize="13"
+							<TextBlock Text="{Binding AppVersion}" FontSize="13"
 									   Foreground="{DynamicResource SemiColorText2}"/>
 						</StackPanel>
 						<StackPanel Orientation="Horizontal" Spacing="10" Margin="0,2,0,0">

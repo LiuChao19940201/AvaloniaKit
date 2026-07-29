@@ -157,9 +157,6 @@ public static class DouyinHtml
              background-size:200% 200%; animation:flow 8s ease infinite; }
   @keyframes flow { 0%{background-position:0% 50%} 50%{background-position:100% 50%}
                     100%{background-position:0% 50%} }
-  .p-back { position:fixed; left:8px; top:14px; z-index:52; width:40px; height:40px;
-            display:flex; align-items:center; justify-content:center;
-            color:#fff; font-size:22px; background:#00000059; border-radius:50%; }
   .p-head { padding:0 16px 14px; margin-top:-38px; }
   .p-avatar { width:76px; height:76px; border-radius:50%; border:3px solid #121420;
               display:flex; align-items:center; justify-content:center;
@@ -231,9 +228,8 @@ public static class DouyinHtml
   <div class="sheet-input"><div class="fake-in">善语结善缘，恶语伤人心…</div><span>@</span><span>&#128522;</span></div>
 </div>
 
-<!-- 博主主页 -->
+<!-- 博主主页（返回由宿主标题栏统一按钮承担：主页打开时先关主页，否则退出模块） -->
 <div class="profile" id="profilePage">
-  <div class="p-back" id="pBack">&#10094;</div>
   <div class="p-cover"></div>
   <div class="p-head">
     <div class="p-avatar" id="pAvatar"><span id="pAvaTxt">A</span><img id="pAvaImg" alt=""/></div>
@@ -384,8 +380,9 @@ public static class DouyinHtml
       curAvatar = qqAvatar();
     }
     document.getElementById('who').textContent = '@' + curWho;
-    // ★ 换人同步换头像：先露字母占位，图片加载成功后盖上
+    // ★ 换人同步换头像：先露字母占位，图片加载成功后盖上（重置换号重试计数）
     document.getElementById('avaTxt').textContent = curWho[0];
+    avaRetry = 0;
     var avaImg = document.getElementById('avaImg');
     avaImg.style.display = 'block';
     avaImg.src = curAvatar;
@@ -404,8 +401,19 @@ public static class DouyinHtml
   }
 
   vd.addEventListener('canplay', function(){ spin.style.display = 'none'; vd.style.opacity = 1; });
-  document.getElementById('avaImg').addEventListener('error', function(){ this.style.display = 'none'; });
-  document.getElementById('pAvaImg').addEventListener('error', function(){ this.style.display = 'none'; });
+  // ★ 随机 QQ 头像可能不存在：失败自动换号重试，多次仍失败才回退字母占位
+  var avaRetry = 0;
+  document.getElementById('avaImg').addEventListener('error', function(){
+    if (avaRetry < 2){ avaRetry++; curAvatar = qqAvatar(); this.src = curAvatar; }
+    else this.style.display = 'none';
+  });
+  document.getElementById('pAvaImg').addEventListener('error', function(){
+    if (this.getAttribute('data-retry') !== '1'){
+      this.setAttribute('data-retry', '1');
+      curAvatar = qqAvatar();
+      this.src = curAvatar;
+    } else this.style.display = 'none';
+  });
   vd.addEventListener('waiting', function(){ spin.style.display = 'block'; });
   vd.addEventListener('playing', function(){ spin.style.display = 'none'; pauseIco.style.display = 'none'; vd.style.opacity = 1; });
   vd.addEventListener('ended', load);
@@ -558,9 +566,10 @@ public static class DouyinHtml
                     '#3B2F52','#2F4A4A','#523F2C'];
 
   function openProfile(){
-    // ★ 主页头像与信息流头像保持同一张（失败回退字母占位）
+    // ★ 主页头像与信息流头像保持同一张（失败自动换号重试一次后回退字母占位）
     document.getElementById('pAvaTxt').textContent = curWho[0];
     var pImg = document.getElementById('pAvaImg');
+    pImg.removeAttribute('data-retry');
     pImg.style.display = 'block';
     pImg.src = curAvatar || qqAvatar();
     document.getElementById('pName').textContent = '@' + curWho;
@@ -573,10 +582,12 @@ public static class DouyinHtml
     syncFollowUi();   // 关注按钮反映真实关注状态
     buildGrid();
     document.getElementById('profilePage').classList.add('on');
+    sendHost('app://profile?open=1&t=' + Date.now());   // ★ 宿主据此让标题栏返回先关主页
     vd.pause(); pauseIco.style.display = 'none';   // 进主页暂停播放
   }
   function closeProfile(){
     document.getElementById('profilePage').classList.remove('on');
+    sendHost('app://profile?open=0&t=' + Date.now());
     if (vd.paused){ vd.play(); }                    // 返回续播
   }
   function buildGrid(){
@@ -597,7 +608,6 @@ public static class DouyinHtml
       grid.appendChild(cell);
     }
   }
-  document.getElementById('pBack').addEventListener('click', closeProfile);
   document.getElementById('pFollowBtn').addEventListener('click', function(){
     if (isFollowed(curWho)) doUnfollow(curWho); else doFollow();
   });
@@ -637,6 +647,7 @@ public static class DouyinHtml
     // 关注 Tab 取消最后一个关注 → 收起主页并显示空状态引导
     if (isFollowTab && follows.length === 0){
       document.getElementById('profilePage').classList.remove('on');
+      sendHost('app://profile?open=0&t=' + Date.now());
       showEmpty(true);
     }
   }

@@ -24,6 +24,11 @@
 		<PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" />
 		<!-- 显式引用以对齐 core-ktx 与 core 版本（避免 D8 重复类） -->
 		<PackageReference Include="Xamarin.AndroidX.Core.Core.Ktx" />
+		<!-- 显式对齐 Lifecycle 家族版本（消除 NU1608：旧版 2.10.0.2 的严格上限
+		     与 core-ktx 拉高的 Common/Runtime 2.11.0.1 冲突） -->
+		<PackageReference Include="Xamarin.AndroidX.Lifecycle.ViewModelSavedState" />
+		<PackageReference Include="Xamarin.AndroidX.Lifecycle.Process" />
+		<PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" />
 		<PackageReference Include="SkiaSharp" />
 		<PackageReference Include="SkiaSharp.NativeAssets.Android" />
 	</ItemGroup>

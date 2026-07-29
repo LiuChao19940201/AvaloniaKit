@@ -28,7 +28,7 @@ namespace AvaloniaKit.ViewModels.UserControls.Chat;
 // ══════════════════════════════════════════════════════════════════════════════
 public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel, INavigationAware
 {
-    public override string Title => "基金自选跟踪";
+    public override string Title => "基金自选";
     public override bool ShowTitleBar => false;
     public override bool ShowTabBar => false;
 
@@ -47,7 +47,22 @@ public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel
     private readonly ILocalDataService? _localData;
 
     public FundTrackerViewModel(ILocalDataService? localDataService = null)
-        => _localData = localDataService;
+    {
+        _localData = localDataService;
+        // ★ 启动预热：后台提前备好发现榜单与自选净值，首次进页秒开
+        _ = PrewarmAsync();
+    }
+
+    private async Task PrewarmAsync()
+    {
+        try
+        {
+            await EnsureWatchlistLoadedAsync();
+            _ = LoadDiscoverAsync(DiscoverCategories[SelectedCategoryIndex].FundType);
+            if (_watchCodes.Count > 0) _ = DoRefreshAsync();
+        }
+        catch { /* 预热失败不影响进页时正常加载 */ }
+    }
 
     // ── 持久化：ILocalDataService（三端 JSON 文件 / localStorage），代码逗号拼接存储 ──
     //    旧版写安装目录 fund_watchlist.json（AOT 发布后目录只读会静默失败），
@@ -133,6 +148,7 @@ public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel
     private readonly Dictionary<string, (List<DiscoverFundItem> Items, DateTime At)> _discoverCache = new();
     private static readonly TimeSpan DiscoverCacheTtl = TimeSpan.FromMinutes(5);
     private int _discoverVersion;   // 防止慢响应覆盖后选分类的数据
+    private string _shownDiscoverType = "";   // 当前列表展示的分类（SWR 判断是否需清空）
 
     [RelayCommand]
     private void SelectCategory(int index)
@@ -149,22 +165,35 @@ public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel
     {
         int version = ++_discoverVersion;
 
-        // 缓存命中：直接展示（仅同步 IsAdded 状态），切分类秒开
+        // 缓存命中且未过期：同分类已在展示则原样保留（不重排、滚动位置不丢），
+        // 切分类则秒填缓存
         if (_discoverCache.TryGetValue(fundType, out var cached) &&
             DateTime.Now - cached.At < DiscoverCacheTtl)
         {
-            DiscoverFunds.Clear();
-            foreach (var f in cached.Items)
+            if (_shownDiscoverType != fundType || DiscoverFunds.Count == 0)
             {
-                f.IsAdded = _watchCodes.Contains(f.Code);
-                DiscoverFunds.Add(f);
+                DiscoverFunds.Clear();
+                foreach (var f in cached.Items)
+                {
+                    f.IsAdded = _watchCodes.Contains(f.Code);
+                    DiscoverFunds.Add(f);
+                }
+                _shownDiscoverType = fundType;
             }
+            else
+                foreach (var f in DiscoverFunds)
+                    f.IsAdded = _watchCodes.Contains(f.Code);
             IsDiscoverLoading = false;
             return;
         }
 
         IsDiscoverLoading = true;
-        DiscoverFunds.Clear();
+        // ★ SWR：仅切分类时清空；同分类过期刷新保持旧内容可见，新数据到达后整体替换
+        if (_shownDiscoverType != fundType)
+        {
+            DiscoverFunds.Clear();
+            _shownDiscoverType = fundType;
+        }
 
         try
         {
@@ -182,7 +211,7 @@ public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel
             // 按近1月涨幅排序，取前20条（FundApi：Web 端自动套 CORS 代理，三端真实数据一致）
             string url = FundApi.Rank(ft, DateTime.Today.AddMonths(-1), DateTime.Today, 20);
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
             string raw = await _http.GetStringAsync(url, cts.Token);
             if (version != _discoverVersion) return;   // 已切到其他分类，丢弃过期响应
 
@@ -190,7 +219,7 @@ public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel
             var m = Regex.Match(raw, @"datas:\[(.+?)\]", RegexOptions.Singleline);
             if (!m.Success)
             {
-                LoadDiscoverFallback();
+                if (DiscoverFunds.Count == 0) LoadDiscoverFallback();   // 有旧内容则保留
                 return;
             }
 
@@ -227,17 +256,20 @@ public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel
 
             if (loaded.Count == 0)
             {
-                LoadDiscoverFallback();
+                if (DiscoverFunds.Count == 0) LoadDiscoverFallback();   // 有旧内容则保留
                 return;
             }
 
+            // 新数据就绪：一次性替换（SWR 的“静默换新”）
+            DiscoverFunds.Clear();
             foreach (var f in loaded)
                 DiscoverFunds.Add(f);
+            _shownDiscoverType = fundType;
             _discoverCache[fundType] = (loaded, DateTime.Now);   // 仅成功数据入缓存，fallback 不缓存
         }
         catch
         {
-            if (version == _discoverVersion) LoadDiscoverFallback();
+            if (version == _discoverVersion && DiscoverFunds.Count == 0) LoadDiscoverFallback();
         }
         finally
         {
@@ -320,9 +352,8 @@ public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel
         // 榜单 IsAdded 标记与自选刷新都依赖自选码表，先确保其加载完成
         await EnsureWatchlistLoadedAsync();
 
-        // 每次进入页面：发现Tab预加载，自选不重复刷新
-        if (DiscoverFunds.Count == 0)
-            _ = LoadDiscoverAsync(DiscoverCategories[SelectedCategoryIndex].FundType);
+        // 每次进入页面：发现榜走 SWR（缓存新鲜秒开；过期时旧内容保持可见后台刷新）
+        _ = LoadDiscoverAsync(DiscoverCategories[SelectedCategoryIndex].FundType);
 
         if (ActiveTab == 1 && (Funds.Count == 0 || IsOffline))
             _ = DoRefreshAsync();
@@ -344,7 +375,7 @@ public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel
 
         IsLoading = true;
         IsOffline = false;
-        StatusText = "加载中…";
+        StatusText = Funds.Count == 0 ? "加载中…" : "刷新中…";
 
         await EnsureWatchlistLoadedAsync();
 
@@ -356,21 +387,34 @@ public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel
             return;
         }
 
+        var codes = _watchCodes.ToList();
+
+        // ★ 首次加载：先铺占位行立刻撑起列表（骨架感），数据到一条换一条
+        if (Funds.Count == 0)
+            foreach (var c in codes)
+                Funds.Add(new FundItemViewModel
+                {
+                    Code = c, Name = c, LastNav = "--", EstNav = "--",
+                    ChangeRaw = "0", UpdatedAt = "--", Source = "加载中", IsMock = true,
+                });
+
         int ok = 0;
         try
         {
-            // ★ 并发抓取全部自选（原 foreach 串行逐只等待，N 只基金 N 次顺序往返是慢的主因）；
-            //   抓完再整体替换列表，刷新期间旧数据保持可见
-            var codes = _watchCodes.ToList();
-            var items = await Task.WhenAll(codes.Select(c => FetchFundAsync(c, ct)));
-            ct.ThrowIfCancellationRequested();
-
-            Funds.Clear();
-            foreach (var item in items)
+            // ★ 并发抓取 + 谁先返回谁先上屏：按 code 原地替换单行，
+            //   不再等最慢的一只回来才整批显示（await 续体回 UI 线程，改集合安全）
+            await Task.WhenAll(codes.Select(async code =>
             {
-                Funds.Add(item);
+                var item = await FetchFundAsync(code, ct);
+                if (ct.IsCancellationRequested) return;
+                int idx = -1;
+                for (int i = 0; i < Funds.Count; i++)
+                    if (Funds[i].Code == item.Code) { idx = i; break; }
+                if (idx >= 0) Funds[idx] = item;
+                else Funds.Add(item);
                 if (!item.IsMock) ok++;
-            }
+            }));
+            ct.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException) { return; }
         finally { IsLoading = false; }
@@ -588,7 +632,7 @@ public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel
         {
             string url = FundApi.Estimate(code);
             using var reqCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            reqCts.CancelAfter(TimeSpan.FromSeconds(10));
+            reqCts.CancelAfter(TimeSpan.FromSeconds(6));
             string raw = await _http.GetStringAsync(url, reqCts.Token);
             var m = Regex.Match(raw, @"jsonpgz\((.+)\)");
             if (m.Success)
@@ -618,7 +662,7 @@ public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel
         {
             string url = FundApi.Quote(code);
             using var reqCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            reqCts.CancelAfter(TimeSpan.FromSeconds(10));
+            reqCts.CancelAfter(TimeSpan.FromSeconds(6));
             string raw = await _http.GetStringAsync(url, reqCts.Token);
             using var doc = JsonDocument.Parse(raw);
             if (doc.RootElement.TryGetProperty("data", out var data) &&

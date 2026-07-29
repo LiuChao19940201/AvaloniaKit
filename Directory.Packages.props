@@ -55,6 +55,11 @@
     <!-- 显式对齐 core-ktx 与 core：新版 androidx.core 已合入 ktx 类，
          传递依赖的旧版 core-ktx 会导致 D8 重复类编译失败 -->
     <PackageVersion Include="Xamarin.AndroidX.Core.Core.Ktx" Version="*" />
+    <!-- 显式对齐 Lifecycle 家族版本（消除 NU1608：传递依赖的 2.10.0.2 带严格上限
+         <2.10.1，与 core-ktx 拉高的 Common/Runtime 2.11.0.1 家族错位） -->
+    <PackageVersion Include="Xamarin.AndroidX.Lifecycle.ViewModelSavedState" Version="*" />
+    <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Process"             Version="*" />
+    <PackageVersion Include="Xamarin.AndroidX.Lifecycle.LiveData.Core"       Version="*" />
     <PackageVersion Include="SkiaSharp"                      Version="*" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Android" Version="*" />
   </ItemGroup>

@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace AvaloniaKit.ViewModels.UserControls.Profile;
@@ -20,7 +21,12 @@ public partial class ProfileViewModel : PageViewModelBase
     private readonly IImagePickerService? _imagePicker;
 
     [ObservableProperty] private string _nickname = "Hello World";
-    [ObservableProperty] private string _wechatId = "LC862739233";
+    // 版本号：主项目 csproj <Version> 编译期写入程序集元数据，运行时读取，
+    // 发版只改 csproj 一处四端统一（截掉 SourceLink 附加的 +commit 后缀）
+    public string AppVersion { get; } =
+        typeof(ProfileViewModel).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion.Split('+')[0] ?? "1.0";
     [ObservableProperty] private int _friendCount = 2;
     [ObservableProperty] private Bitmap? _avatarBitmap;
     [ObservableProperty] private bool _hasAvatar;

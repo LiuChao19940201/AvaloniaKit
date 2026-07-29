@@ -53,6 +53,7 @@ public partial class DouyinViewModel : PageViewModelBase, ISubPageViewModel
 
     private bool _hooked;
     private bool _followsLoaded;
+    private bool _profileOpen;   // HTML 内博主主页是否打开（决定标题栏返回的语义）
     private readonly List<(string Name, string Avatar)> _follows = new();
 
     public DouyinViewModel(IDouyinService? douyinService = null,
@@ -76,9 +77,10 @@ public partial class DouyinViewModel : PageViewModelBase, ISubPageViewModel
         _ = ShowOverlayAsync();
     }
 
-    // 先恢复关注列表再显示（首次读盘，之后内存缓存）
+    // 先恢复关注列表再显示（首次读盘，之后内存缓存）；重建后主页必然处于关闭态
     private async Task ShowOverlayAsync()
     {
+        _profileOpen = false;
         await EnsureFollowsLoadedAsync();
         _douyin?.Show(DouyinHtml.Build(ActiveTab, BuildFollowsJson()), TopOffsetDip);
     }
@@ -120,6 +122,11 @@ public partial class DouyinViewModel : PageViewModelBase, ISubPageViewModel
                 string target = args.GetValueOrDefault("n", "");
                 if (_follows.RemoveAll(f => f.Name == target) > 0)
                     _ = SaveFollowsAsync();
+                break;
+
+            // 博主主页开/关：标题栏返回据此先关主页而非退出模块
+            case "profile":
+                _profileOpen = args.GetValueOrDefault("open", "") == "1";
                 break;
         }
     }
@@ -202,6 +209,14 @@ public partial class DouyinViewModel : PageViewModelBase, ISubPageViewModel
     [RelayCommand]
     private void GoBack()
     {
+        // ★ 博主主页打开时：返回键先“关主页回信息流”（重建覆盖层），不退出模块；
+        //   HTML 内不再自绘主页返回按钮，四端统一走标题栏/系统返回手势
+        if (_profileOpen && _douyin != null)
+        {
+            _douyin.Hide();
+            _ = ShowOverlayAsync();
+            return;
+        }
         _douyin?.Hide();
         WeakReferenceMessenger.Default.Send(new NavigateBackFromDouyinMessage());
     }

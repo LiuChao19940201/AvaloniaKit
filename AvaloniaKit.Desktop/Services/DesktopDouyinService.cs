@@ -21,7 +21,7 @@ namespace AvaloniaKit.Desktop.Services;
 // ══════════════════════════════════════════════════════════════════════════════
 public class DesktopDouyinService : IDouyinService
 {
-    private CoreWebView2Environment? _env;
+    private Task<CoreWebView2Environment>? _envTask;
     private CoreWebView2Controller? _controller;
     private Window? _window;
     private bool _showing;
@@ -30,6 +30,33 @@ public class DesktopDouyinService : IDouyinService
 
     public event EventHandler? ExitRequested;
     public event EventHandler<string>? MessageReceived;
+
+    public DesktopDouyinService()
+    {
+        // ★ 启动预热：WebView2 环境创建耗时秒级，提前到应用启动时后台完成，
+        //   首次进抖音省掉这段等待（失败静默，进入时会重试）
+        _ = GetEnvAsync().ContinueWith(_ => { }, TaskContinuationOptions.OnlyOnFaulted);
+    }
+
+    // 环境单例任务：失败不缓存（下次调用重试），运行中/成功则复用
+    private Task<CoreWebView2Environment> GetEnvAsync()
+    {
+        if (_envTask is { IsFaulted: false, IsCanceled: false } alive) return alive;
+        return _envTask = CreateEnvAsync();
+    }
+
+    private static async Task<CoreWebView2Environment> CreateEnvAsync()
+    {
+        string dataDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AvaloniaKit", "WebView2");
+        var opts = new CoreWebView2EnvironmentOptions
+        {
+            // ★ 允许 video 自动播放（模拟抖音进入即播）
+            AdditionalBrowserArguments = "--autoplay-policy=no-user-gesture-required",
+        };
+        return await CoreWebView2Environment.CreateAsync(null, dataDir, opts);
+    }
 
     public void Show(string html, double topOffsetDip)
     {
@@ -50,23 +77,13 @@ public class DesktopDouyinService : IDouyinService
             var handle = window?.TryGetPlatformHandle();
             if (window == null || handle == null) return;
 
-            if (_env == null)
-            {
-                string dataDir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "AvaloniaKit", "WebView2");
-                var opts = new CoreWebView2EnvironmentOptions
-                {
-                    // ★ 允许 video 自动播放（模拟抖音进入即播）
-                    AdditionalBrowserArguments = "--autoplay-policy=no-user-gesture-required",
-                };
-                _env = await CoreWebView2Environment.CreateAsync(null, dataDir, opts);
-            }
+            // 启动时已预热：这里通常直接命中现成环境，不再有秒级等待
+            var env = await GetEnvAsync();
 
             // 等待期间用户可能已经点了返回，或又切了一次 Tab（代数过期）
             if (!_showing || version != _showVersion) return;
 
-            var controller = await _env.CreateCoreWebView2ControllerAsync(handle.Handle);
+            var controller = await env.CreateCoreWebView2ControllerAsync(handle.Handle);
             if (!_showing || version != _showVersion) { controller.Close(); return; }
 
             _window = window;

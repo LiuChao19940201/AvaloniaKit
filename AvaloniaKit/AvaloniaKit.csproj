@@ -4,6 +4,9 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- ★ 应用版本号（发版唯一修改点）：编译期写入程序集元数据，
+         “我的”页面运行时读取展示，四端统一 -->
+    <Version>1.0.3</Version>
   </PropertyGroup>
 
   <ItemGroup>

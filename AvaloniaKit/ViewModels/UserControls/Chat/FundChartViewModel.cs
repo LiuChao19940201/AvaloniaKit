@@ -129,6 +129,10 @@ public partial class FundChartViewModel : PageViewModelBase, ISubPageViewModel
     // ══════════════════════════════════════════════════════════════════════════
     //  历史净值加载（数据源完全不变，仅在加载完毕后派生新属性）
     // ══════════════════════════════════════════════════════════════════════════
+    // ── 净值原始响应缓存：同一基金+区间 5 分钟内重进秒开（SWR：先渲染缓存再后台换新）──
+    private static readonly Dictionary<string, (string Raw, DateTime At)> _navCache = new();
+    private static readonly TimeSpan NavCacheTtl = TimeSpan.FromMinutes(5);
+
     private async Task LoadDataAsync(int range)
     {
         _cts?.Cancel();
@@ -136,16 +140,21 @@ public partial class FundChartViewModel : PageViewModelBase, ISubPageViewModel
         _cts = new CancellationTokenSource();
         var ct = _cts.Token;
 
+        string cacheKey = $"{FundCode}:{range}";
+        bool hasCache = _navCache.TryGetValue(cacheKey, out var cached) && RenderNavJson(cached.Raw);
+
         IsLoading = true;
         HasError = false;
-        NavPoints.Clear();
-        RecentRows.Clear();
-        RecentRowCount = 0;
-        LatestNavText = "--";
-        ChangeBadgeBg = "#AAAAAA";
-        ChangeDateRange = "";
-        StatHigh = StatLow = StatAvg = StatDays = "--";
-        StatusText = "数据加载中…";
+        if (hasCache)
+        {
+            // ★ 秒开：缓存已渲染；未过期直接返回，过期则后台刷新静默换新
+            if (DateTime.Now - cached.At < NavCacheTtl) { IsLoading = false; return; }
+        }
+        else
+        {
+            ResetDisplay();
+            StatusText = "数据加载中…";
+        }
 
         try
         {
@@ -158,10 +167,46 @@ public partial class FundChartViewModel : PageViewModelBase, ISubPageViewModel
             string url = FundApi.NavHistory(FundCode, startDate, endDate);
 
             using var reqCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            reqCts.CancelAfter(TimeSpan.FromSeconds(12));
+            reqCts.CancelAfter(TimeSpan.FromSeconds(8));
 
             string raw = await _http.GetStringAsync(url, reqCts.Token);
 
+            if (RenderNavJson(raw))
+                _navCache[cacheKey] = (raw, DateTime.Now);
+            else if (!hasCache)
+                SetError("暂无历史净值数据");
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            if (!hasCache) SetError("请求超时，请检查网络");   // 有缓存兜底就不打扰
+        }
+        catch (OperationCanceledException) { /* 被新请求取消，静默退出 */ }
+        catch (Exception ex)
+        {
+            if (!hasCache) SetError($"加载失败：{ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void ResetDisplay()
+    {
+        NavPoints.Clear();
+        RecentRows.Clear();
+        RecentRowCount = 0;
+        LatestNavText = "--";
+        ChangeBadgeBg = "#AAAAAA";
+        ChangeDateRange = "";
+        StatHigh = StatLow = StatAvg = StatDays = "--";
+    }
+
+    // 解析并渲染历史净值 JSON；数据无效返回 false（渲染逻辑与原实现一致）
+    private bool RenderNavJson(string raw)
+    {
+        try
+        {
             using var doc = JsonDocument.Parse(raw);
             var root = doc.RootElement;
 
@@ -169,10 +214,7 @@ public partial class FundChartViewModel : PageViewModelBase, ISubPageViewModel
                 !data.TryGetProperty("LSJZList", out var list) ||
                 list.ValueKind != JsonValueKind.Array ||
                 list.GetArrayLength() == 0)
-            {
-                SetError("暂无历史净值数据");
-                return;
-            }
+                return false;
 
             // ── 解析并排序（原逻辑不变）──────────────────────────────────
             var points = new List<NavPoint>();
@@ -188,11 +230,11 @@ public partial class FundChartViewModel : PageViewModelBase, ISubPageViewModel
             }
             points.Sort((a, b) => a.Date.CompareTo(b.Date));
 
-            if (points.Count == 0)
-            {
-                SetError("暂无可用数据");
-                return;
-            }
+            if (points.Count == 0) return false;
+
+            // 渲染前清空集合（可能是缓存→新数据的二次渲染，原地替换）
+            NavPoints.Clear();
+            RecentRows.Clear();
 
             // ── Y 轴范围（原逻辑不变）──────────────────────────────────
             double minNav = double.MaxValue, maxNav = double.MinValue;
@@ -261,20 +303,9 @@ public partial class FundChartViewModel : PageViewModelBase, ISubPageViewModel
                 NavPoints.Add(p);
 
             StatusText = $"共 {points.Count} 个交易日  最新净值 {points[^1].Nav:F4}";
+            return true;
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
-            SetError("请求超时，请检查网络");
-        }
-        catch (OperationCanceledException) { /* 被新请求取消，静默退出 */ }
-        catch (Exception ex)
-        {
-            SetError($"加载失败：{ex.Message}");
-        }
-        finally
-        {
-            IsLoading = false;
-        }
+        catch { return false; }
     }
 
     private void SetError(string msg)

@@ -37,14 +37,13 @@ public partial class NeteaseViewModel : PageViewModelBase, ISubPageViewModel, IN
     }
 
     private readonly IAudioService? _audio;
-    private readonly ILocalDataService? _localData;
 
-    public NeteaseViewModel(IAudioService? audioService = null,
-                            ILocalDataService? localDataService = null)
+    public NeteaseViewModel(IAudioService? audioService = null)
     {
         _audio = audioService;
-        _localData = localDataService;
         WeakReferenceMessenger.Default.RegisterAll(this);
+        // ★ 启动预热：提前备好第一批随机推荐，首次进页秒开（对齐真实 App 体验）
+        _ = PrefetchNextBatchAsync();
     }
 
     // ── Tab ───────────────────────────────────────────────────────────────────
@@ -80,13 +79,8 @@ public partial class NeteaseViewModel : PageViewModelBase, ISubPageViewModel, IN
     [ObservableProperty] private int _selectedRankIndex = 0;
     public ObservableCollection<NeteaseSongItem> RankSongs { get; } = new();
 
-    // ── 数据新鲜度：离线兜底/超期数据在下次进入时自动重试真实接口 ──────────
-    //    修复：兜底填充后列表非空，原“有数据就跳过加载”导致会话内永远卡在
-    //    固定离线歌单，看起来“每天内容都一样”
-    private bool _recommendIsFallback;
+    // ── 数据新鲜度：排行榜离线兑底在下次选择时自动重试真实接口 ──────────
     private bool _rankIsFallback;
-    private DateTime _recommendLoadedAt = DateTime.MinValue;
-    private static readonly TimeSpan RefreshTtl = TimeSpan.FromMinutes(30);
 
     [RelayCommand]
     private void SelectRank(int index)
@@ -131,11 +125,25 @@ public partial class NeteaseViewModel : PageViewModelBase, ISubPageViewModel, IN
 
     public void OnNavigatedTo()
     {
-        // 空列表 / 离线兜底 / 数据超过 TTL → 重新拉取真实接口
-        if (RecommendSongs.Count == 0 || _recommendIsFallback ||
-            DateTime.Now - _recommendLoadedAt > RefreshTtl)
-            _ = LoadRecommendAsync();
+        // ★ 每次进入（含返回后再进）内容都不一样，且进门秒开：
+        //   双缓冲预取——上次离开后已在后台备好新一批，进门直接换上，
+        //   再为下次进入继续备货（无任何本地记录，纯内存）
+        _ = RefreshRecommendOnEntryAsync();
         SyncPlaybackState();
+    }
+
+    private async Task RefreshRecommendOnEntryAsync()
+    {
+        if (_nextBatch is { Count: > 0 } ready)
+        {
+            _nextBatch = null;
+            SwapRecommend(ready);              // ★ 秒开：直接换上备好的新批次
+            _ = PrefetchNextBatchAsync();      // 后台为下次进入备货
+            return;
+        }
+        // 无备货（冷启动/上次预取失败）：现拉，旧内容保持可见不白屏
+        await LoadRecommendAsync();
+        _ = PrefetchNextBatchAsync();
     }
 
     // ── ★ 同步迷你播放栏状态（从播放器页返回时调用）─────────────────────────
@@ -248,110 +256,124 @@ public partial class NeteaseViewModel : PageViewModelBase, ISubPageViewModel, IN
     };
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  推荐歌曲加载 —— 每次都随机不重样：
+    //  推荐歌曲加载 —— 纯随机、每次进入都不一样（不做任何本地记录/过滤）：
     //  ① 候选池 = 「推荐新音乐」接口 + 随机一个榜单的全量 trackIds；
-    //  ② 排除「已看过」（netease_seen_songs 持久化，重开应用依然生效）；
-    //  ③ 随机抽 30 首并打乱顺序，展示后记入已看过（上限 300 自动淘汰最旧）
+    //  ② 洗牌抽样 30 首再打乱顺序（随机榜单 + 随机抽取，天然次次不同）
     //  —— 修复：原实现直拉固定接口前 30 首，服务端排序几天不变，
     //     导致每次打开都是同样的歌
     // ══════════════════════════════════════════════════════════════════════════
-    private const string SeenKey = "netease_seen_songs";
-    private const int SeenCap = 300;
     private const int RecommendCount = 30;
     private const int MaxFromNewSong = 12;   // 新歌接口最多占用名额（保榜单多样性）
-    private List<long>? _seenOrder;          // 已看过（时间序，用于淘汰最旧）
+
+    // ── 双缓冲预取：备好的下一批（纯内存，不落盘）──
+    private List<NeteaseSongItem>? _nextBatch;
+    private Task? _prefetchTask;
+
+    private Task PrefetchNextBatchAsync()
+        => _prefetchTask is { IsCompleted: false } running ? running
+                                                           : _prefetchTask = PrefetchCoreAsync();
+
+    private async Task PrefetchCoreAsync()
+    {
+        try
+        {
+            var batch = await BuildRandomBatchAsync();
+            if (batch.Count > 0) _nextBatch = batch;
+        }
+        catch { /* 预取失败不打扰，进页时走现拉兼兑底 */ }
+    }
+
+    private void SwapRecommend(List<NeteaseSongItem> batch)
+    {
+        RecommendSongs.Clear();
+        foreach (var it in batch) RecommendSongs.Add(it);
+        StatusText = $"已加载 {batch.Count} 首";
+    }
 
     private async Task LoadRecommendAsync()
     {
         if (IsRecommendLoading) return;
         IsRecommendLoading = true;
-        RecommendSongs.Clear();
-        StatusText = "加载中…";
+        // ★ 不再进门先清空：旧内容保持可见，新批次就绪后一次性替换（告别白屏转圈）
+        if (RecommendSongs.Count == 0) StatusText = "加载中…";
 
         try
         {
-            var seen = await LoadSeenIdsAsync();
-            var picked = new List<NeteaseSongItem>();
-            var pickedIds = new HashSet<long>();
-
-            // ── 候选池 A：官方「推荐新音乐」（详情齐全，保内容新鲜）──
-            var poolA = new List<NeteaseSongItem>();
-            await LoadPersonalizedNewSongAsync(poolA, RecommendCount);
-            Shuffle(poolA);
-
-            // ── 候选池 B：随机一个榜单的全量 trackIds（每次榜单都可能不同）──
-            long listId = RankCategories[Random.Shared.Next(RankCategories.Count)].ListId;
-            var poolB = await GetPlaylistTrackIdsAsync(listId, 200);
-            Shuffle(poolB);
-
-            // ① A 里未看过的先取一部分
-            foreach (var it in poolA)
-            {
-                if (picked.Count >= MaxFromNewSong) break;
-                if (seen.Contains(it.Id) || !pickedIds.Add(it.Id)) continue;
-                picked.Add(it);
-            }
-
-            // ② B 里未看过的凑满 30；候选不够时放宽已看过限制补齐
-            var wantIds = new List<long>();
-            foreach (var id in poolB)
-            {
-                if (picked.Count + wantIds.Count >= RecommendCount) break;
-                if (seen.Contains(id) || pickedIds.Contains(id)) continue;
-                wantIds.Add(id);
-            }
-            if (picked.Count + wantIds.Count < RecommendCount)
-                foreach (var it in poolA)          // 先用 A 的已看过垫底
-                {
-                    if (picked.Count + wantIds.Count >= RecommendCount) break;
-                    if (!pickedIds.Add(it.Id)) continue;
-                    picked.Add(it);
-                }
-            if (picked.Count + wantIds.Count < RecommendCount)
-                foreach (var id in poolB)          // 再用 B 的已看过垫底
-                {
-                    if (picked.Count + wantIds.Count >= RecommendCount) break;
-                    if (pickedIds.Contains(id) || wantIds.Contains(id)) continue;
-                    wantIds.Add(id);
-                }
-
-            if (wantIds.Count > 0)
-            {
-                var details = new List<NeteaseSongItem>();
-                await LoadSongDetailAsync(details, wantIds);
-                foreach (var it in details)
-                    if (pickedIds.Add(it.Id)) picked.Add(it);
-            }
-
-            // ③ 打乱最终顺序入列
-            Shuffle(picked);
-            foreach (var it in picked)
-            {
-                if (RecommendSongs.Count >= RecommendCount) break;
-                RecommendSongs.Add(it);
-            }
-
-            _recommendIsFallback = RecommendSongs.Count == 0;
-            if (_recommendIsFallback)
+            var batch = await BuildRandomBatchAsync();
+            if (batch.Count > 0) SwapRecommend(batch);
+            else if (RecommendSongs.Count == 0)
             {
                 LoadRecommendFallback();
                 StatusText = "已加载（离线数据）";
             }
-            else
-            {
-                StatusText = $"已加载 {RecommendSongs.Count} 首";
-                await SaveSeenIdsAsync();          // 本次展示的歌记入已看过
-            }
-            _recommendLoadedAt = DateTime.Now;
+            else StatusText = "网络不稳，已保留当前列表";
         }
         catch
         {
-            _recommendIsFallback = true;
-            _recommendLoadedAt = DateTime.Now;
-            LoadRecommendFallback();
-            StatusText = "已加载（离线数据）";
+            if (RecommendSongs.Count == 0)
+            {
+                LoadRecommendFallback();
+                StatusText = "已加载（离线数据）";
+            }
+            else StatusText = "网络不稳，已保留当前列表";
         }
         finally { IsRecommendLoading = false; }
+    }
+
+    // 构建一批全新随机推荐（预取与现拉共用同一条流水线）
+    private async Task<List<NeteaseSongItem>> BuildRandomBatchAsync()
+    {
+        var picked = new List<NeteaseSongItem>();
+        var pickedIds = new HashSet<long>();
+
+        // ★ 候选池 A（推荐新音乐）与 B（随机榜单全量 trackIds）并行拉取，
+        //   省掉一次串行网络往返（原 A→B→详情三跳串行是慢的主因之一）
+        var poolA = new List<NeteaseSongItem>();
+        long listId = RankCategories[Random.Shared.Next(RankCategories.Count)].ListId;
+        var taskA = LoadPersonalizedNewSongAsync(poolA, RecommendCount);
+        var taskB = GetPlaylistTrackIdsAsync(listId, 200);
+        await Task.WhenAll(taskA, taskB);
+        var poolB = taskB.Result;
+        Shuffle(poolA);
+        Shuffle(poolB);
+
+        // ① 新歌池随机先取一部分
+        foreach (var it in poolA)
+        {
+            if (picked.Count >= MaxFromNewSong) break;
+            if (!pickedIds.Add(it.Id)) continue;
+            picked.Add(it);
+        }
+
+        // ② 榜单池随机凑满 30；榜单失效时用新歌池剩余垫底
+        var wantIds = new List<long>();
+        foreach (var id in poolB)
+        {
+            if (picked.Count + wantIds.Count >= RecommendCount) break;
+            if (pickedIds.Contains(id)) continue;
+            wantIds.Add(id);
+        }
+        if (picked.Count + wantIds.Count < RecommendCount)
+            foreach (var it in poolA)
+            {
+                if (picked.Count + wantIds.Count >= RecommendCount) break;
+                if (!pickedIds.Add(it.Id)) continue;
+                picked.Add(it);
+            }
+
+        if (wantIds.Count > 0)
+        {
+            var details = new List<NeteaseSongItem>();
+            await LoadSongDetailAsync(details, wantIds);
+            foreach (var it in details)
+                if (pickedIds.Add(it.Id)) picked.Add(it);
+        }
+
+        // ③ 打乱最终顺序
+        Shuffle(picked);
+        if (picked.Count > RecommendCount)
+            picked.RemoveRange(RecommendCount, picked.Count - RecommendCount);
+        return picked;
     }
 
     // Fisher-Yates 洗牌
@@ -364,37 +386,6 @@ public partial class NeteaseViewModel : PageViewModelBase, ISubPageViewModel, IN
         }
     }
 
-    // ── 「已看过」持久化：跨会话排除重复推荐（读写静默容错）──
-    private async Task<HashSet<long>> LoadSeenIdsAsync()
-    {
-        if (_seenOrder == null)
-        {
-            _seenOrder = new List<long>();
-            try
-            {
-                string? raw = _localData == null ? null : await _localData.LoadSettingAsync(SeenKey);
-                if (!string.IsNullOrEmpty(raw))
-                    foreach (var part in raw.Split(','))
-                        if (long.TryParse(part, out long id)) _seenOrder.Add(id);
-            }
-            catch { /* 读取失败按空处理 */ }
-        }
-        return new HashSet<long>(_seenOrder);
-    }
-
-    private async Task SaveSeenIdsAsync()
-    {
-        if (_seenOrder == null) return;
-        var set = new HashSet<long>(_seenOrder);
-        foreach (var song in RecommendSongs)
-            if (set.Add(song.Id)) _seenOrder.Add(song.Id);
-        if (_seenOrder.Count > SeenCap)
-            _seenOrder.RemoveRange(0, _seenOrder.Count - SeenCap);   // 淘汰最旧
-        if (_localData == null) return;
-        try { await _localData.SaveSettingAsync(SeenKey, string.Join(',', _seenOrder)); }
-        catch { /* 存储不可用时静默 */ }
-    }
-
     // ── 官方「推荐新音乐」：与网易云 App 未登录态推荐一致 ──
     private async Task LoadPersonalizedNewSongAsync(
         IList<NeteaseSongItem> target, int limit)
@@ -402,7 +393,7 @@ public partial class NeteaseViewModel : PageViewModelBase, ISubPageViewModel, IN
         try
         {
             string url = NeteaseApi.PersonalizedNewSong(limit);
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
             string raw = await _http.GetStringAsync(url, cts.Token);
 
             using var doc = JsonDocument.Parse(raw);
@@ -432,23 +423,31 @@ public partial class NeteaseViewModel : PageViewModelBase, ISubPageViewModel, IN
     {
         if (IsRankLoading) return;
         IsRankLoading = true;
-        RankSongs.Clear();
 
         try
         {
+            // ★ 先拉到临时列表再整体替换：刷新/切榜期间旧内容保持可见不白屏
             long listId = RankCategories[SelectedRankIndex].ListId;
-            await LoadPlaylistAsync(RankSongs, listId, 20);
-            _rankIsFallback = RankSongs.Count == 0;
+            var tmp = new List<NeteaseSongItem>();
+            await LoadPlaylistAsync(tmp, listId, 20);
+            _rankIsFallback = tmp.Count == 0;
+            RankSongs.Clear();
             if (_rankIsFallback) LoadRankFallback();
+            else foreach (var s in tmp) RankSongs.Add(s);
         }
-        catch { _rankIsFallback = true; LoadRankFallback(); }
+        catch
+        {
+            _rankIsFallback = true;
+            RankSongs.Clear();
+            LoadRankFallback();
+        }
         finally { IsRankLoading = false; }
     }
 
     // ── 通用歌单加载：v6 接口拿实时 trackIds → song/detail 批量取详情 ──
     // 老版 api/playlist/detail 返回的是陈旧缓存，与官方榜单不一致
     private async Task LoadPlaylistAsync(
-        ObservableCollection<NeteaseSongItem> target, long listId, int limit)
+        IList<NeteaseSongItem> target, long listId, int limit)
     {
         var ids = await GetPlaylistTrackIdsAsync(listId, limit);
         if (ids.Count > 0)
@@ -466,7 +465,7 @@ public partial class NeteaseViewModel : PageViewModelBase, ISubPageViewModel, IN
         try
         {
             string url = NeteaseApi.PlaylistDetail(listId);
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
             string raw = await _http.GetStringAsync(url, cts.Token);
 
             using var doc = JsonDocument.Parse(raw);
@@ -492,7 +491,7 @@ public partial class NeteaseViewModel : PageViewModelBase, ISubPageViewModel, IN
         try
         {
             string url = NeteaseApi.SongDetail(ids);
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
             string raw = await _http.GetStringAsync(url, cts.Token);
 
             using var doc = JsonDocument.Parse(raw);
@@ -512,10 +511,10 @@ public partial class NeteaseViewModel : PageViewModelBase, ISubPageViewModel, IN
     }
 
     private async Task LoadPlaylistLegacyAsync(
-        ObservableCollection<NeteaseSongItem> target, long listId, int limit)
+        IList<NeteaseSongItem> target, long listId, int limit)
     {
         string url = NeteaseApi.PlaylistDetailLegacy(listId);
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
         string raw = await _http.GetStringAsync(url, cts.Token);
 
         using var doc = JsonDocument.Parse(raw);
