@@ -13,7 +13,7 @@ namespace AvaloniaKit.Android.Services;
 //    ★ 顶部留出 topOffsetDip（状态栏安全区 + 标题栏），保留 Avalonia 标题栏与返回按钮；
 //    DIP→px 用屏幕 density 换算，与 Avalonia RenderScaling 同源
 //  · LoadDataWithBaseURL 加载共享 HTML（高德 JS API 地图 + 路线规划 + TTS 播报）
-//  · 开启 Geolocation（定位需 App 具备定位权限，缺失时页面内定位失败仅提示，不影响查路线）
+//  · 开启 Geolocation；Show 时运行时请求定位权限（Android 6+），H5 定位才能拿到真实 GPS
 //  · 系统返回键/手势由 MainActivity 的 SubPageBackCallback 兜底（MapViewModel.GoBack 调 Hide）
 // ══════════════════════════════════════════════════════════════════════════════
 public class AndroidMapService : IMapService
@@ -34,6 +34,18 @@ public class AndroidMapService : IMapService
         activity.RunOnUiThread(() =>
         {
             HideCore();
+
+            // ★ 运行时请求定位权限（Android 6+）：WebView 内 H5 定位拿真实 GPS 的前提
+            if (OperatingSystem.IsAndroidVersionAtLeast(23) &&
+                activity.CheckSelfPermission(global::Android.Manifest.Permission.AccessFineLocation)
+                    != global::Android.Content.PM.Permission.Granted)
+            {
+                activity.RequestPermissions(new[]
+                {
+                    global::Android.Manifest.Permission.AccessFineLocation,
+                    global::Android.Manifest.Permission.AccessCoarseLocation,
+                }, 9001);
+            }
 
             var wv = new WebView(activity);
             var s = wv.Settings;

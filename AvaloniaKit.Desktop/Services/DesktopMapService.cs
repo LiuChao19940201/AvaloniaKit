@@ -84,6 +84,8 @@ public class DesktopMapService : IMapService
             controller.CoreWebView2.Settings.IsZoomControlEnabled = false;
 
             controller.CoreWebView2.NavigationStarting += OnNavigationStarting;
+            // ★ 放行 H5 定位权限请求（WebView2 走 Windows 定位服务；不可用时 HTML 端会 IP 兜底）
+            controller.CoreWebView2.PermissionRequested += OnPermissionRequested;
             window.PropertyChanged += OnWindowPropertyChanged;
 
             UpdateBounds();
@@ -111,12 +113,20 @@ public class DesktopMapService : IMapService
                 try
                 {
                     _controller.CoreWebView2.NavigationStarting -= OnNavigationStarting;
+                    _controller.CoreWebView2.PermissionRequested -= OnPermissionRequested;
                     _controller.Close();
                 }
                 catch { }
                 _controller = null;
             }
         });
+    }
+
+    private void OnPermissionRequested(object? sender, CoreWebView2PermissionRequestedEventArgs e)
+    {
+        // H5 定位需显式允许，否则 WebView2 默认弹窗/拒绝
+        if (e.PermissionKind == CoreWebView2PermissionKind.Geolocation)
+            e.State = CoreWebView2PermissionState.Allow;
     }
 
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)

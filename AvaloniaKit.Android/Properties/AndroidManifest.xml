@@ -3,6 +3,9 @@
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.CAMERA" />
 	<uses-permission android:name="android.permission.VIBRATE" />
+	<!-- 地图定位：WebView 内 H5 定位需 App 具备定位权限（进入地图时运行时请求） -->
+	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
 	<!-- Android 11+ 需要声明 queries 才能通过 ResolveActivity 查找相机应用 -->
 	<queries>
