@@ -20,6 +20,27 @@
 		<Style Selector="Button.icon-btn:pointerover /template/ ContentPresenter">
 			<Setter Property="Background" Value="Transparent"/>
 		</Style>
+		<!-- 标题栏 关注/推荐 Tab（抖音风：未选半透白，选中白色加粗带下划线） -->
+		<Style Selector="Button.dy-tab">
+			<Setter Property="Background"      Value="Transparent"/>
+			<Setter Property="Foreground"      Value="#A0FFFFFF"/>
+			<Setter Property="FontSize"        Value="16"/>
+			<Setter Property="Padding"         Value="6,2"/>
+			<Setter Property="BorderThickness" Value="0"/>
+		</Style>
+		<Style Selector="Button.dy-tab.active">
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+		</Style>
+		<Style Selector="Button.dy-tab:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="Transparent"/>
+		</Style>
+		<Style Selector="Button.dy-tab Border.dy-underline">
+			<Setter Property="Background" Value="Transparent"/>
+		</Style>
+		<Style Selector="Button.dy-tab.active Border.dy-underline">
+			<Setter Property="Background" Value="White"/>
+		</Style>
 	</UserControl.Styles>
 
 	<!-- 视频界面由平台 WebView 覆盖层呈现（共享 HTML，从标题栏以下开始）；
@@ -43,9 +64,27 @@
 						</Canvas>
 					</Viewbox>
 				</Button>
-				<TextBlock Grid.Column="1" Text="抖音"
-						   FontSize="17" FontWeight="SemiBold" Foreground="White"
-						   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+				<!-- 关注/推荐 Tab（取代原“抖音”标题，与抖音 App 顶栏一致） -->
+				<StackPanel Grid.Column="1" Orientation="Horizontal"
+							HorizontalAlignment="Center" VerticalAlignment="Center"
+							Spacing="18">
+					<Button Classes="dy-tab" Classes.active="{Binding IsFollowTab}"
+							Command="{Binding SwitchTabCommand}" CommandParameter="0">
+						<StackPanel Spacing="3">
+							<TextBlock Text="关注" HorizontalAlignment="Center"/>
+							<Border Classes="dy-underline" Height="3" Width="22"
+									CornerRadius="2" HorizontalAlignment="Center"/>
+						</StackPanel>
+					</Button>
+					<Button Classes="dy-tab" Classes.active="{Binding IsRecommendTab}"
+							Command="{Binding SwitchTabCommand}" CommandParameter="1">
+						<StackPanel Spacing="3">
+							<TextBlock Text="推荐" HorizontalAlignment="Center"/>
+							<Border Classes="dy-underline" Height="3" Width="22"
+									CornerRadius="2" HorizontalAlignment="Center"/>
+						</StackPanel>
+					</Button>
+				</StackPanel>
 			</Grid>
 		</Border>
 

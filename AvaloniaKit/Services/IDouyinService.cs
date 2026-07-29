@@ -12,6 +12,8 @@ namespace AvaloniaKit.Services;
 //  · ★ 覆盖层不再全屏：从 topOffsetDip（Avalonia 状态栏安全区 + 标题栏高度，
 //    设备无关单位）以下开始，顶部保留与音乐模块一致的 Avalonia 标题栏与返回按钮
 //  · ExitRequested 保留给平台层拦截 app://exit 等退出通道使用
+//  · MessageReceived：HTML 内业务消息（app://follow 等），平台层拦截 app:// 导航
+//    （Desktop/Android/iOS）或 postMessage 'douyin-msg:app://…'（Browser iframe）后上报
 // ══════════════════════════════════════════════════════════════════════════════
 public interface IDouyinService
 {
@@ -23,4 +25,7 @@ public interface IDouyinService
 
     /// <summary>用户在 HTML 内点击返回（可能来自后台线程，需自行调度回 UI 线程）</summary>
     event EventHandler? ExitRequested;
+
+    /// <summary>HTML 内业务消息（完整 app:// URL，如 app://follow?n=…；可能来自后台线程）</summary>
+    event EventHandler<string>? MessageReceived;
 }

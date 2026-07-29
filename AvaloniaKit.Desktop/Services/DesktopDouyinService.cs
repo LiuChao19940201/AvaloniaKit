@@ -25,25 +25,30 @@ public class DesktopDouyinService : IDouyinService
     private CoreWebView2Controller? _controller;
     private Window? _window;
     private bool _showing;
+    private int _showVersion;   // ★ 代数：快速连切 Tab 时作废旧的异步 Show 流程
     private double _topOffsetDip;
 
     public event EventHandler? ExitRequested;
+    public event EventHandler<string>? MessageReceived;
 
     public void Show(string html, double topOffsetDip)
     {
         _showing = true;
         _topOffsetDip = topOffsetDip;
-        _ = ShowAsync(html);
+        _ = ShowAsync(html, ++_showVersion);
     }
 
-    private async Task ShowAsync(string html)
+    private async Task ShowAsync(string html, int version)
     {
         try
         {
-            _window = (Application.Current?.ApplicationLifetime
+            // ★ 全程用局部变量：切 Tab 是 Hide()+Show() 连发，Hide 投递的清理会在
+            //   下方 await 间隙执行并把 _window/_controller 置空，过早写字段会被
+            //   清掉导致 NRE；字段赋值必须放在全部 await 之后
+            var window = (Application.Current?.ApplicationLifetime
                 as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-            var handle = _window?.TryGetPlatformHandle();
-            if (_window == null || handle == null) return;
+            var handle = window?.TryGetPlatformHandle();
+            if (window == null || handle == null) return;
 
             if (_env == null)
             {
@@ -58,19 +63,20 @@ public class DesktopDouyinService : IDouyinService
                 _env = await CoreWebView2Environment.CreateAsync(null, dataDir, opts);
             }
 
-            // 等待期间用户可能已经点了返回
-            if (!_showing) return;
+            // 等待期间用户可能已经点了返回，或又切了一次 Tab（代数过期）
+            if (!_showing || version != _showVersion) return;
 
             var controller = await _env.CreateCoreWebView2ControllerAsync(handle.Handle);
-            if (!_showing) { controller.Close(); return; }
+            if (!_showing || version != _showVersion) { controller.Close(); return; }
 
+            _window = window;
             _controller = controller;
             controller.DefaultBackgroundColor = System.Drawing.Color.Black;
             controller.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
             controller.CoreWebView2.Settings.IsZoomControlEnabled = false;
 
             controller.CoreWebView2.NavigationStarting += OnNavigationStarting;
-            _window.PropertyChanged += OnWindowPropertyChanged;
+            window.PropertyChanged += OnWindowPropertyChanged;
 
             UpdateBounds();
             controller.CoreWebView2.NavigateToString(html);
@@ -107,11 +113,13 @@ public class DesktopDouyinService : IDouyinService
 
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
     {
+        // app:// 自定义协议 = HTML→宿主消息通道：取消导航并分发
+        if (!e.Uri.StartsWith("app://", StringComparison.OrdinalIgnoreCase)) return;
+        e.Cancel = true;
         if (e.Uri.StartsWith("app://exit", StringComparison.OrdinalIgnoreCase))
-        {
-            e.Cancel = true;
             ExitRequested?.Invoke(this, EventArgs.Empty);
-        }
+        else
+            MessageReceived?.Invoke(this, e.Uri);
     }
 
     // 窗口尺寸/缩放变化时同步 WebView2 子窗口区域

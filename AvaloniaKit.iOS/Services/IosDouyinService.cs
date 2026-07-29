@@ -13,7 +13,7 @@ namespace AvaloniaKit.iOS.Services;
 //    （iOS point 即 DIP，无需换算），保留 Avalonia 标题栏与统一样式返回按钮
 //  · LoadHtmlString 加载共享 HTML（video 由系统 WebKit 播放）
 //  · 允许自动播放（MediaTypesRequiringUserActionForPlayback = None + 内联播放）
-//  · 拦截 app://exit：HTML 内返回按钮 → ExitRequested
+//  · 拦截 app://：exit → ExitRequested；其余（follow 等）→ MessageReceived
 // ══════════════════════════════════════════════════════════════════════════════
 public class IosDouyinService : IDouyinService
 {
@@ -23,6 +23,7 @@ public class IosDouyinService : IDouyinService
     private WKWebView? _webView;
 
     public event EventHandler? ExitRequested;
+    public event EventHandler<string>? MessageReceived;
 
     public IosDouyinService(Func<UIWindow?> windowProvider)
     {
@@ -96,9 +97,13 @@ public class IosDouyinService : IDouyinService
             Action<WKNavigationActionPolicy> decisionHandler)
         {
             string? url = navigationAction.Request?.Url?.AbsoluteString;
-            if (url != null && url.StartsWith("app://exit", StringComparison.OrdinalIgnoreCase))
+            if (url != null && url.StartsWith("app://", StringComparison.OrdinalIgnoreCase))
             {
-                _owner.ExitRequested?.Invoke(_owner, EventArgs.Empty);
+                // app:// 自定义协议 = HTML→宿主消息通道（exit / follow 等）
+                if (url.StartsWith("app://exit", StringComparison.OrdinalIgnoreCase))
+                    _owner.ExitRequested?.Invoke(_owner, EventArgs.Empty);
+                else
+                    _owner.MessageReceived?.Invoke(_owner, url);
                 decisionHandler(WKNavigationActionPolicy.Cancel);
                 return;
             }

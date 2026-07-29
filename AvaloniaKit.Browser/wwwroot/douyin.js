@@ -4,10 +4,12 @@
 //  · ★ 顶部留出 topPx（状态栏安全区 + 标题栏），保留 Avalonia 标题栏与
 //    统一样式返回按钮（CSS px ≡ Avalonia DIP，无需换算）
 //  · iframe 内 postMessage('douyin-exit') → 通知 C# 退出回调（保留通道）
+//  · iframe 内 postMessage('douyin-msg:app://…') → 通知 C# 业务消息（关注/取关）
 // ══════════════════════════════════════════════════════════════════════════════
 
 let _overlay = null;
 let _onExit = null;
+let _onMessage = null;
 
 export function douyinShow(html, topPx) {
     douyinHide();
@@ -41,6 +43,13 @@ export function douyinSetExitCallback(cb) {
     _onExit = cb;
 }
 
+export function douyinSetMessageCallback(cb) {
+    _onMessage = cb;
+}
+
 function onMessage(e) {
+    if (typeof e.data !== 'string') return;
     if (e.data === 'douyin-exit' && _onExit) _onExit();
+    else if (e.data.startsWith('douyin-msg:') && _onMessage)
+        _onMessage(e.data.substring('douyin-msg:'.length));
 }

@@ -27,6 +27,7 @@ public class AndroidDouyinService : IDouyinService
     private WebView? _webView;
 
     public event EventHandler? ExitRequested;
+    public event EventHandler<string>? MessageReceived;
 
     public AndroidDouyinService(Func<Activity> activityProvider) => _getActivity = activityProvider;
 
@@ -88,9 +89,13 @@ public class AndroidDouyinService : IDouyinService
         public override bool ShouldOverrideUrlLoading(WebView? view, IWebResourceRequest? request)
         {
             string? url = request?.Url?.ToString();
-            if (url != null && url.StartsWith("app://exit", StringComparison.OrdinalIgnoreCase))
+            if (url != null && url.StartsWith("app://", StringComparison.OrdinalIgnoreCase))
             {
-                _owner.ExitRequested?.Invoke(_owner, EventArgs.Empty);
+                // app:// 自定义协议 = HTML→宿主消息通道（exit / follow 等）
+                if (url.StartsWith("app://exit", StringComparison.OrdinalIgnoreCase))
+                    _owner.ExitRequested?.Invoke(_owner, EventArgs.Empty);
+                else
+                    _owner.MessageReceived?.Invoke(_owner, url);
                 return true;
             }
             return false;   // 其余（视频 302 等）交给 WebView 正常处理

@@ -21,11 +21,18 @@ public partial class BrowserDouyinService : IDouyinService
     private static partial void JsSetExitCallback(
         [JSMarshalAs<JSType.Function>] Action onExit);
 
+    [JSImport("douyinSetMessageCallback", "douyin")]
+    private static partial void JsSetMessageCallback(
+        [JSMarshalAs<JSType.Function<JSType.String>>] Action<string> onMessage);
+
     public event EventHandler? ExitRequested;
+    public event EventHandler<string>? MessageReceived;
 
     public BrowserDouyinService()
     {
         JsSetExitCallback(() => ExitRequested?.Invoke(this, EventArgs.Empty));
+        // iframe 内 postMessage('douyin-msg:app://…') → 业务消息（关注/取关）
+        JsSetMessageCallback(uri => MessageReceived?.Invoke(this, uri));
     }
 
     public void Show(string html, double topOffsetDip) => JsShow(html, topOffsetDip);

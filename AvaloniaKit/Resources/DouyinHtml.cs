@@ -11,10 +11,21 @@ namespace AvaloniaKit.Resources;
 //  · 交互：上滑/下滑（触摸+滚轮）切换视频、单击暂停/播放、双击飘红心点赞
 //  · 返回：由宿主 Avalonia 标题栏的统一返回按钮处理（覆盖层从标题栏下方开始，
 //    HTML 内不再自绘返回按钮）
+//  · 关注/推荐 Tab 由宿主 Avalonia 标题栏承载（HTML 不再自绘 Tab），切 Tab 时
+//    宿主以对应初始状态重建覆盖层（Build 注入 Tab + 关注列表）
+//  · 关注：信息流头像“+”号 / 主页关注按钮 → sendHost 上报宿主持久化；
+//    关注 Tab 只刷已关注博主视频，顶部横条展示关注列表，空关注显引导页
+//  · JS→宿主消息：app://xxx 导航拦截（Desktop/Android/iOS）或
+//    postMessage 'douyin-msg:app://xxx'（Browser iframe）
 // ══════════════════════════════════════════════════════════════════════════════
 public static class DouyinHtml
 {
-    public const string Page = """
+    /// <summary>按初始状态生成页面（activeTab：0=关注 1=推荐；followsJson：[{"n":"名","a":"头像URL"},…]）</summary>
+    public static string Build(int activeTab, string followsJson)
+        => Template.Replace("__INIT_TAB__", activeTab.ToString())
+                   .Replace("__INIT_FOLLOWS__", followsJson);
+
+    private const string Template = """
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -29,15 +40,23 @@ public static class DouyinHtml
   video { position:absolute; inset:0; width:100%; height:100%;
           object-fit:contain; background:#000; transition:opacity .18s; }
 
-  /* 顶部切换 Tab（返回按钮在宿主 Avalonia 标题栏，这里只保留 Tab） */
-  .topbar { position:fixed; top:0; left:0; right:0; height:46px; z-index:30;
-            display:flex; align-items:center; padding-top:6px;
+  /* 关注 Tab：顶部关注博主横条（Tab 本体在宿主 Avalonia 标题栏） */
+  .fstrip { position:fixed; top:0; left:0; right:0; z-index:30; display:none;
+            gap:14px; padding:10px 14px 8px; overflow-x:auto;
             background:linear-gradient(#00000088,transparent); }
-  .tabs { flex:1; display:flex; justify-content:center; gap:22px;
-          color:#ffffffa0; font-size:16px; }
-  .tabs .on { color:#fff; font-weight:600; position:relative; }
-  .tabs .on::after { content:''; position:absolute; left:50%; transform:translateX(-50%);
-                     bottom:-7px; width:22px; height:3px; border-radius:2px; background:#fff; }
+  .fstrip .fs { flex:none; display:flex; flex-direction:column; align-items:center;
+                gap:4px; width:56px; }
+  .fstrip .fa { width:44px; height:44px; border-radius:50%; border:2px solid #ffffff88;
+                position:relative; overflow:hidden; color:#fff; font-weight:700;
+                display:flex; align-items:center; justify-content:center;
+                background:linear-gradient(135deg,#7F7FD5,#86A8E7,#91EAE4); }
+  .fstrip .fa img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .fstrip .fn { font-size:11px; color:#ffffffcc; max-width:56px; overflow:hidden;
+                text-overflow:ellipsis; white-space:nowrap; }
+  /* 关注 Tab 空状态引导 */
+  .fempty { position:fixed; inset:0; z-index:15; display:none; flex-direction:column;
+            align-items:center; justify-content:center; gap:12px; color:#fff; }
+  .fempty .sub { color:#ffffff80; font-size:13px; }
 
   /* 右侧操作栏 */
   .side { position:fixed; right:10px; bottom:120px; z-index:20;
@@ -177,12 +196,15 @@ public static class DouyinHtml
   <video id="vd" playsinline webkit-playsinline preload="auto"></video>
 </div>
 
-<div class="topbar">
-  <div class="tabs"><span>关注</span><span class="on">推荐</span></div>
+<div class="fstrip" id="fstrip"></div>
+<div class="fempty" id="fempty">
+  <div style="font-size:44px">&#129309;</div>
+  <div style="font-size:16px;font-weight:600">还没有关注的人</div>
+  <div class="sub">去「推荐」刷视频，点头像上的 + 关注博主吧</div>
 </div>
 
 <div class="side">
-  <div class="avatar" id="avatar"><span id="avaTxt">A</span><img id="avaImg" alt=""/><span class="plus">+</span></div>
+  <div class="avatar" id="avatar"><span id="avaTxt">A</span><img id="avaImg" alt=""/><span class="plus" id="plusBtn">+</span></div>
   <div class="act" id="btnLike"><span class="ico">&#10084;</span><span class="num" id="numLike">12.3w</span></div>
   <div class="act" id="btnCmt"><span class="ico">&#128172;</span><span class="num" id="numCmt">8592</span></div>
   <div class="act"><span class="ico">&#11088;</span><span class="num" id="numFav">2.1w</span></div>
@@ -268,6 +290,25 @@ public static class DouyinHtml
   var idx = 0, liked = false, toastTimer = 0;
   var curWho = '小可爱';   // 当前视频作者（评论/主页共用）
 
+  // ── 宿主注入的初始状态：Tab（0=关注 1=推荐）与已关注列表 [{n,a}] ──
+  var isFollowTab = __INIT_TAB__ === 0;
+  var follows = __INIT_FOLLOWS__;
+  var forcedAuthor = null;   // 点关注横条头像 → 下一条指定该博主
+
+  function isFollowed(name){
+    for (var i = 0; i < follows.length; i++) if (follows[i].n === name) return true;
+    return false;
+  }
+
+  // ── JS→宿主消息：原生端 app:// 导航拦截；Browser iframe 用 postMessage ──
+  function sendHost(url){
+    if (window.parent !== window){
+      try { window.parent.postMessage('douyin-msg:' + url, '*'); } catch(e){}
+    } else {
+      location.href = url;
+    }
+  }
+
   // ── 覆盖层状态：评论/主页打开时屏蔽切视频与播放切换手势 ──
   function overlayOpen(){
     return document.getElementById('cmtSheet').classList.contains('on') ||
@@ -303,8 +344,30 @@ public static class DouyinHtml
     toastTimer = setTimeout(function(){ toast.style.opacity = 0; }, 1300);
   }
 
-  // ── 换一条视频（随机 API + 随机文案/数字） ──
+  // ── 关注 Tab 空状态：隐藏信息流控件并停掉视频 ──
+  function showEmpty(on){
+    document.getElementById('fempty').style.display = on ? 'flex' : 'none';
+    document.querySelector('.side').style.display = on ? 'none' : 'flex';
+    document.querySelector('.info').style.display = on ? 'none' : 'block';
+    document.querySelector('.prog').style.display = on ? 'none' : 'block';
+    if (on){
+      try { vd.pause(); vd.removeAttribute('src'); vd.load(); } catch(e){}
+      spin.style.display = 'none'; pauseIco.style.display = 'none';
+    }
+  }
+
+  // 关注流选人：优先横条点选的博主，否则随机（避免连刷同一人）
+  function pickFollow(){
+    if (forcedAuthor){ var f = forcedAuthor; forcedAuthor = null; return f; }
+    if (follows.length === 1) return follows[0];
+    var v; do { v = follows[Math.floor(Math.random()*follows.length)]; } while (v.n === curWho);
+    return v;
+  }
+
+  // ── 换一条视频（随机 API + 随机文案/数字；关注 Tab 只刷已关注博主） ──
   function load(){
+    if (isFollowTab && follows.length === 0){ showEmpty(true); return; }
+    showEmpty(false);
     liked = false;
     var like = document.getElementById('btnLike');
     like.classList.remove('liked');
@@ -312,17 +375,23 @@ public static class DouyinHtml
     document.getElementById('numCmt').textContent  = rndNum();
     document.getElementById('numFav').textContent  = rndNum();
     document.getElementById('numShare').textContent= rndNum();
-    var who = pickNoRepeat(names, curWho);
-    curWho = who;
-    document.getElementById('who').textContent = '@' + who;
+    if (isFollowTab){
+      var f = pickFollow();
+      curWho = f.n;
+      curAvatar = f.a || qqAvatar();   // 关注流用收藏的头像，与关注时一致
+    } else {
+      curWho = pickNoRepeat(names, curWho);
+      curAvatar = qqAvatar();
+    }
+    document.getElementById('who').textContent = '@' + curWho;
     // ★ 换人同步换头像：先露字母占位，图片加载成功后盖上
-    document.getElementById('avaTxt').textContent = who[0];
-    curAvatar = qqAvatar();
+    document.getElementById('avaTxt').textContent = curWho[0];
     var avaImg = document.getElementById('avaImg');
     avaImg.style.display = 'block';
     avaImg.src = curAvatar;
+    syncFollowUi();
     document.getElementById('txt').textContent = pick(texts);
-    document.getElementById('mq').textContent = '@' + who + ' ' + pick(musics);
+    document.getElementById('mq').textContent = '@' + curWho + ' ' + pick(musics);
 
     spin.style.display = 'block';
     pauseIco.style.display = 'none';
@@ -386,7 +455,7 @@ public static class DouyinHtml
       load();                            // 上滑/下滑都切下一条（源为随机流）
     } else if (!moved){
       var t = e.target;
-      if (!t.closest('.side') && !t.closest('.topbar') && !t.closest('.info')) onTap(tx, ty);
+      if (!t.closest('.side') && !t.closest('.fstrip') && !t.closest('.info') && !t.closest('.fempty')) onTap(tx, ty);
     }
   }, {passive:true});
 
@@ -403,9 +472,10 @@ public static class DouyinHtml
     // ★ 触屏设备：touchend 已处理，忽略浏览器补发的合成 click（否则暂停会被抵消）
     if (Date.now() - lastTouchTime < 600) return;
     if (overlayOpen()) return;
-    if (e.target.closest('.side') || e.target.closest('.topbar') ||
+    if (e.target.closest('.side') || e.target.closest('.fstrip') ||
         e.target.closest('.info') || e.target.closest('.sheet') ||
-        e.target.closest('.profile') || e.target.closest('.mask')) return;
+        e.target.closest('.profile') || e.target.closest('.mask') ||
+        e.target.closest('.fempty')) return;
     onTap(e.clientX, e.clientY);
   });
 
@@ -419,6 +489,10 @@ public static class DouyinHtml
   Array.prototype.forEach.call(document.querySelectorAll('.act'), function(el){
     if (el.id === 'btnLike' || el.id === 'btnCmt') return;
     el.addEventListener('click', function(e){ e.stopPropagation(); showToast('演示模式：功能仅供展示'); });
+  });
+  // ── 关注：信息流头像 + 号（阻止冒泡，不进主页） ──
+  document.getElementById('plusBtn').addEventListener('click', function(e){
+    e.stopPropagation(); doFollow();
   });
   document.getElementById('avatar').addEventListener('click', function(e){
     e.stopPropagation(); openProfile();
@@ -496,8 +570,7 @@ public static class DouyinHtml
     document.getElementById('pFollow').textContent = Math.floor(Math.random()*500+20);
     document.getElementById('pFans').textContent = rndNum();
     document.getElementById('pBio').textContent = pick(bios);
-    var btn = document.getElementById('pFollowBtn');
-    btn.classList.remove('done'); btn.textContent = '+ 关注';
+    syncFollowUi();   // 关注按钮反映真实关注状态
     buildGrid();
     document.getElementById('profilePage').classList.add('on');
     vd.pause(); pauseIco.style.display = 'none';   // 进主页暂停播放
@@ -526,9 +599,7 @@ public static class DouyinHtml
   }
   document.getElementById('pBack').addEventListener('click', closeProfile);
   document.getElementById('pFollowBtn').addEventListener('click', function(){
-    var on = this.classList.toggle('done');
-    this.textContent = on ? '已关注' : '+ 关注';
-    showToast(on ? '关注成功' : '已取消关注');
+    if (isFollowed(curWho)) doUnfollow(curWho); else doFollow();
   });
   document.getElementById('pTabWorks').addEventListener('click', function(){
     this.classList.add('on');
@@ -541,6 +612,54 @@ public static class DouyinHtml
     buildGrid();
   });
 
+  // ══ 关注：本地状态同步 + 上报宿主持久化 ══════════════════════
+  function syncFollowUi(){
+    var on = isFollowed(curWho);
+    document.getElementById('plusBtn').style.display = on ? 'none' : 'block';
+    var btn = document.getElementById('pFollowBtn');
+    btn.classList.toggle('done', on);
+    btn.textContent = on ? '已关注' : '+ 关注';
+  }
+  function doFollow(){
+    if (isFollowed(curWho)) return;
+    follows.push({ n: curWho, a: curAvatar });
+    sendHost('app://follow?n=' + encodeURIComponent(curWho) +
+             '&a=' + encodeURIComponent(curAvatar) + '&t=' + Date.now());
+    showToast('关注成功');
+    syncFollowUi(); renderStrip();
+  }
+  function doUnfollow(name){
+    for (var i = follows.length - 1; i >= 0; i--)
+      if (follows[i].n === name) follows.splice(i, 1);
+    sendHost('app://unfollow?n=' + encodeURIComponent(name) + '&t=' + Date.now());
+    showToast('已取消关注');
+    syncFollowUi(); renderStrip();
+    // 关注 Tab 取消最后一个关注 → 收起主页并显示空状态引导
+    if (isFollowTab && follows.length === 0){
+      document.getElementById('profilePage').classList.remove('on');
+      showEmpty(true);
+    }
+  }
+  // 关注 Tab 顶部横条：展示全部已关注博主，点头像刷该博主的视频
+  function renderStrip(){
+    var strip = document.getElementById('fstrip');
+    strip.style.display = (isFollowTab && follows.length) ? 'flex' : 'none';
+    if (!isFollowTab) return;
+    strip.innerHTML = '';
+    follows.forEach(function(f){
+      var d = document.createElement('div');
+      d.className = 'fs';
+      d.innerHTML = '<div class="fa">' + f.n[0] +
+        (f.a ? '<img src="' + f.a + '" alt="" onerror="this.remove()"/>' : '') +
+        '</div><div class="fn">' + f.n + '</div>';
+      d.addEventListener('click', function(e){
+        e.stopPropagation(); forcedAuthor = f; load();
+      });
+      strip.appendChild(d);
+    });
+  }
+
+  renderStrip();
   load();
 })();
 </script>
