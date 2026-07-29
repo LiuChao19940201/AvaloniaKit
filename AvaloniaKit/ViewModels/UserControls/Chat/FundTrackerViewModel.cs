@@ -23,7 +23,7 @@ namespace AvaloniaKit.ViewModels.UserControls.Chat;
 //  · ActiveTab（0=发现  1=自选）
 //  · 发现 Tab：分类标签（矢量图标）+ 分类基金排行榜（5 分钟内存缓存，切回秒开）
 //  · 自选 Tab：净值并发刷新（Task.WhenAll，替代原串行逐只等待）
-//  · 自选码表经 ILocalDataService 持久化（三端 SQLite / localStorage），重开可恢复
+//  · 自选码表经 ILocalDataService 持久化（三端 JSON 文件 / localStorage），重开可恢复
 //  · DiscoverFundItem：可「+」一键添加到自选，可点击跳转图表
 // ══════════════════════════════════════════════════════════════════════════════
 public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel, INavigationAware
@@ -49,7 +49,7 @@ public partial class FundTrackerViewModel : PageViewModelBase, ISubPageViewModel
     public FundTrackerViewModel(ILocalDataService? localDataService = null)
         => _localData = localDataService;
 
-    // ── 持久化：ILocalDataService（三端 SQLite / localStorage），代码逗号拼接存储 ──
+    // ── 持久化：ILocalDataService（三端 JSON 文件 / localStorage），代码逗号拼接存储 ──
     //    旧版写安装目录 fund_watchlist.json（AOT 发布后目录只读会静默失败），
     //    首次读库为空时做一次性迁移
     private const string WatchlistKey = "fund_watchlist";

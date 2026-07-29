@@ -1,6 +1,5 @@
 ﻿using Avalonia;
 using Avalonia.Media;
-using AvaloniaKit.Data;
 using AvaloniaKit.Desktop.Services;
 using AvaloniaKit.Services;
 using AvaloniaKit.Helpers;
@@ -16,8 +15,6 @@ internal sealed class Program
     public static void Main(string[] args)
     {
         // ═══ 组合根：必须在 App 启动前完成服务注册 ═══
-        SQLitePCL.Batteries_V2.Init();
-
         var appDataPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "AvaloniaKit");
@@ -28,7 +25,7 @@ internal sealed class Program
 
         var services = new ServiceCollection();
         services.AddSingleton<ILocalDataService>(
-            new SqliteLocalDataService(Path.Combine(appDataPath, "app.db")));
+            new FileLocalDataService(appDataPath));
         services.AddSingleton<IImagePickerService, DesktopImagePickerService>();
         services.AddSingleton<IAudioService, DesktopAudioService>();
         services.AddSingleton<IDouyinService, DesktopDouyinService>();

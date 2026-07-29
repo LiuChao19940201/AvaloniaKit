@@ -19,18 +19,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- 三端（Desktop/Android/iOS）共用同一份 SQLite 实现（namespace AvaloniaKit.Data），
-		     链接文件编译，避免各端维护重复代码 -->
-		<Compile Include="..\Shared\Data\SqliteLocalDataService.cs" Link="Data\SqliteLocalDataService.cs" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<!-- Android 平台专用包 -->
 		<PackageReference Include="Avalonia.Android" />
-		<PackageReference Include="sqlite-net-pcl" />
-		<PackageReference Include="SQLitePCLRaw.bundle_green" />
-		<!-- 显式引用以覆盖 bundle_green 传递依赖的漏洞版本（NU1903） -->
-		<PackageReference Include="SQLitePCLRaw.lib.e_sqlite3.android" />
 		<PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" />
 		<!-- 显式引用以对齐 core-ktx 与 core 版本（避免 D8 重复类） -->
 		<PackageReference Include="Xamarin.AndroidX.Core.Core.Ktx" />

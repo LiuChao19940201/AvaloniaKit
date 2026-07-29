@@ -71,7 +71,7 @@ public partial class TetrisViewModel : GameViewModelBase, ISubPageViewModel
 
         _nextQueued = RandomType();
 
-        // 最高分：从本地存储恢复（三端：SQLite / localStorage）
+        // 最高分：从本地存储恢复（三端：JSON 文件 / localStorage）
         LoadScore(v => HighScore = Math.Max(HighScore, v));
     }
 

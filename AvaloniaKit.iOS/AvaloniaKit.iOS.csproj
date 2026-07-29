@@ -10,14 +10,6 @@
   <ItemGroup>
     <!-- iOS 平台专用包 -->
     <PackageReference Include="Avalonia.iOS" />
-    <PackageReference Include="sqlite-net-pcl" />
-    <PackageReference Include="SQLitePCLRaw.bundle_green" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- 三端（Desktop/Android/iOS）共用同一份 SQLite 实现（namespace AvaloniaKit.Data），
-         链接文件编译，避免各端维护重复代码 -->
-    <Compile Include="..\Shared\Data\SqliteLocalDataService.cs" Link="Data\SqliteLocalDataService.cs" />
   </ItemGroup>
 
   <ItemGroup>

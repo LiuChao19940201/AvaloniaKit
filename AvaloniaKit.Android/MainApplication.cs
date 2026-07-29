@@ -4,7 +4,6 @@ using Avalonia;
 using Avalonia.Android;
 using Avalonia.Media;
 using AvaloniaKit.Android.Services;
-using AvaloniaKit.Data;
 using AvaloniaKit.Services;
 using AvaloniaKit.Helpers;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,14 +30,13 @@ public class MainApplication : AvaloniaAndroidApplication<App>
     public override void OnCreate()
     {
         // ═══ 组合根：必须在 base.OnCreate() 之前完成注册! ═══
-        SQLitePCL.Batteries_V2.Init();
-        var dbPath = Path.Combine(FilesDir!.AbsolutePath, "app.db");
+        var dataDir = FilesDir!.AbsolutePath;
 
         static Activity GetActivity() => MainActivity.Current
             ?? throw new InvalidOperationException("MainActivity 尚未创建");
 
         var services = new ServiceCollection();
-        services.AddSingleton<ILocalDataService>(new SqliteLocalDataService(dbPath));
+        services.AddSingleton<ILocalDataService>(new FileLocalDataService(dataDir));
         services.AddSingleton<IAudioService, AndroidAudioService>();
         services.AddSingleton<IDeviceService>(new AndroidDeviceService(GetActivity));
         services.AddSingleton<IImagePickerService>(new AndroidImagePickerService(GetActivity));

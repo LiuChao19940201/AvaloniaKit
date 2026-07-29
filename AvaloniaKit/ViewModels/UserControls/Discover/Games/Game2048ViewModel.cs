@@ -12,7 +12,7 @@ namespace AvaloniaKit.ViewModels.UserControls.Discover.Games;
 //  Game2048ViewModel — 2048（4×4 滑动合并）
 //  · 操作：方向键/WASD/棋盘滑动手势/底部按钮，三端一致
 //  · 音效：滑动/合并/大数字合并/胜利/失败（GameSfx 合成音，三端一致）
-//  · 最高分持久化：IGameScoreStore（SQLite / localStorage）
+//  · 最高分持久化：IGameScoreStore（JSON 文件 / localStorage）
 // ══════════════════════════════════════════════════════════════════════════════
 public partial class Game2048ViewModel : GameViewModelBase, ISubPageViewModel
 {

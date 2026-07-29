@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace AvaloniaKit.Services;
 
-/// <summary>游戏最高分/最佳用时持久化（key-value：Desktop/Android=SQLite、Browser=localStorage）</summary>
+/// <summary>游戏最高分/最佳用时持久化（key-value：Desktop/Android=JSON 文件、Browser=localStorage）</summary>
 public interface IGameScoreStore
 {
     /// <summary>读取记录，无记录或服务不可用时返回 0</summary>

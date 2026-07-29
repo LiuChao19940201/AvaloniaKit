@@ -1,13 +1,11 @@
 using Avalonia;
 using Avalonia.iOS;
-using AvaloniaKit.Data;
 using AvaloniaKit.Helpers;
 using AvaloniaKit.iOS.Services;
 using AvaloniaKit.Services;
 using Foundation;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.IO;
 using UIKit;
 
 namespace AvaloniaKit.iOS;
@@ -25,14 +23,12 @@ public partial class AppDelegate : AvaloniaAppDelegate<App>
     protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
     {
         // ═══ 组合根：必须在 Avalonia 应用构建之前完成注册! ═══
-        SQLitePCL.Batteries_V2.Init();
         var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-        var dbPath = Path.Combine(documents, "app.db");
 
         UIWindow? GetWindow() => Window;
 
         var services = new ServiceCollection();
-        services.AddSingleton<ILocalDataService>(new SqliteLocalDataService(dbPath));
+        services.AddSingleton<ILocalDataService>(new FileLocalDataService(documents));
         services.AddSingleton<IAudioService, IosAudioService>();
         services.AddSingleton<IDeviceService>(new IosDeviceService(GetWindow));
         services.AddSingleton<IImagePickerService>(new IosImagePickerService(GetWindow));

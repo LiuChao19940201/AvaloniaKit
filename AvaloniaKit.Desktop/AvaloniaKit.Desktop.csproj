@@ -23,17 +23,9 @@
     <OptimizationPreference>Speed</OptimizationPreference>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- 三端（Desktop/Android/iOS）共用同一份 SQLite 实现（namespace AvaloniaKit.Data），
-         链接文件编译，避免各端维护重复代码 -->
-    <Compile Include="..\Shared\Data\SqliteLocalDataService.cs" Link="Data\SqliteLocalDataService.cs" />
-  </ItemGroup>
-
-  <!-- ★ 防裁剪保根：sqlite-net 是反射 ORM，实体类的属性 getter/setter 与
-       SQLite-net 自身的映射元数据被裁剪后会导致存库静默失效 -->
+  <!-- ★ 防裁剪保根：共享层含反射访问的 ViewModel，被裁剪后会导致运行时静默失效 -->
   <ItemGroup>
     <TrimmerRootAssembly Include="AvaloniaKit" />
-    <TrimmerRootAssembly Include="SQLite-net" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -49,10 +41,6 @@
     <PackageReference Include="Microsoft.Web.WebView2" />
     <!-- 显式引用以覆盖 Avalonia.Desktop 传递依赖的漏洞版本（NU1903） -->
     <PackageReference Include="Tmds.DBus.Protocol" />
-    <PackageReference Include="sqlite-net-pcl" />
-    <PackageReference Include="SQLitePCLRaw.bundle_green" />
-    <!-- 显式引用以覆盖 bundle_green 传递依赖的漏洞版本（NU1903） -->
-    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
   </ItemGroup>
 
   <ItemGroup>
