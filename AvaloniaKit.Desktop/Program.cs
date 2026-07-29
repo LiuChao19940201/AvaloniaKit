@@ -29,6 +29,7 @@ internal sealed class Program
         services.AddSingleton<IImagePickerService, DesktopImagePickerService>();
         services.AddSingleton<IAudioService, DesktopAudioService>();
         services.AddSingleton<IDouyinService, DesktopDouyinService>();
+        services.AddSingleton<IMapService, DesktopMapService>();
         // 设备反馈（游戏音效/震动三端一致）
         services.AddSingleton<IDeviceService, DesktopDeviceService>();
         App.Services = services.AddAvaloniaKitCore().BuildServiceProvider();

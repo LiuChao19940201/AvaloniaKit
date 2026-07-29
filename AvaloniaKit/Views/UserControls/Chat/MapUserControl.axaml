@@ -1,0 +1,68 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+			 xmlns:vm="clr-namespace:AvaloniaKit.ViewModels.UserControls.Chat"
+			 x:Class="AvaloniaKit.Views.UserControls.Chat.MapUserControl"
+			 d:DesignWidth="390" d:DesignHeight="760"
+			 x:DataType="vm:MapViewModel">
+
+	<Design.DataContext>
+		<vm:MapViewModel/>
+	</Design.DataContext>
+
+	<UserControl.Styles>
+		<Style Selector="Button.icon-btn">
+			<Setter Property="Background"      Value="Transparent"/>
+			<Setter Property="Padding"         Value="8"/>
+			<Setter Property="BorderThickness" Value="0"/>
+		</Style>
+		<Style Selector="Button.icon-btn:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="Transparent"/>
+		</Style>
+	</UserControl.Styles>
+
+	<!-- 地图本体由平台 WebView 覆盖层呈现（共享 HTML，从标题栏以下开始）；
+	     顶部保留 Avalonia 标题栏 + 统一样式返回按钮（与抖音/音乐一致） -->
+	<DockPanel Background="#EAECEE">
+
+		<!-- ★ 标题栏（高度 52，与 MapViewModel.TopOffsetDip 对应） -->
+		<Border DockPanel.Dock="Top" Height="52"
+				Background="White"
+				BorderBrush="#22000000"
+				BorderThickness="0,0,0,0.8"
+				Padding="4,8">
+			<Grid ColumnDefinitions="44,*,44">
+				<Button Grid.Column="0" Classes="icon-btn"
+						Command="{Binding GoBackCommand}"
+						HorizontalAlignment="Center" VerticalAlignment="Center">
+					<Viewbox Width="20" Height="20">
+						<Canvas Width="24" Height="24">
+							<Path Data="M20 11H7.83L13.42 5.41 12 4 4 12 12 20 13.41 18.59 7.83 13H20V11Z"
+								  Fill="#333333"/>
+						</Canvas>
+					</Viewbox>
+				</Button>
+				<TextBlock Grid.Column="1" Text="地图"
+						   FontSize="17" FontWeight="SemiBold" Foreground="#222222"
+						   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+			</Grid>
+		</Border>
+
+		<!-- 承托底 + 服务缺失时的占位提示 -->
+		<Grid Background="#EAECEE">
+			<StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+						Spacing="14" IsVisible="{Binding !HasService}">
+				<TextBlock Text="🗺" FontSize="44" HorizontalAlignment="Center"/>
+				<TextBlock Text="当前平台暂不支持地图"
+						   FontSize="15" Foreground="#666666"
+						   HorizontalAlignment="Center"/>
+				<Button Content="返 回"
+						Command="{Binding GoBackCommand}"
+						HorizontalAlignment="Center"
+						Background="#0A84FF" Foreground="White"
+						CornerRadius="20" Padding="26,8" BorderThickness="0"/>
+			</StackPanel>
+		</Grid>
+	</DockPanel>
+</UserControl>

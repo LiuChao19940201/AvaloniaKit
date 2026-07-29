@@ -33,6 +33,7 @@ public partial class AppDelegate : AvaloniaAppDelegate<App>
         services.AddSingleton<IDeviceService>(new IosDeviceService(GetWindow));
         services.AddSingleton<IImagePickerService>(new IosImagePickerService(GetWindow));
         services.AddSingleton<IDouyinService>(new IosDouyinService(GetWindow));
+        services.AddSingleton<IMapService>(new IosMapService(GetWindow));
         App.Services = services.AddAvaloniaKitCore().BuildServiceProvider();
 
         // ★ 启动日志：iOS 程序目录不可写，日志根目录指向沙盒 Documents；

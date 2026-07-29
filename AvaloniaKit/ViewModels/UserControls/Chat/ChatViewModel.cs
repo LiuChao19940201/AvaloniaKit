@@ -16,6 +16,7 @@ public partial class ChatViewModel : PageViewModelBase
         new() { Name = "网易云音乐",   Preview = "私人漫游 · 推荐、排行、搜索", Time = "昨天", Unread = 0, IsNetease = true },
         new() { Name = "天气预报", Preview = "实时天气 · 24小时与7日预报 · 多城市", Time = "昨天", Unread = 0, IsWeather = true },
         new() { Name = "抖音", Preview = "刷短视频 · 上下滑切换 · 双击点赞", Time = "昨天", Unread = 0, IsDouyin = true },
+        new() { Name = "高德地图", Preview = "查路线 · 真实导航 · 语音播报", Time = "昨天", Unread = 0, IsMap = true },
     };
 
     [RelayCommand]
@@ -29,6 +30,8 @@ public partial class ChatViewModel : PageViewModelBase
             WeakReferenceMessenger.Default.Send(new NavigateToFundTrackerMessage());
         else if (item.IsNetease)
             WeakReferenceMessenger.Default.Send(new NavigateToNeteaseMessage());
+        else if (item.IsMap)
+            WeakReferenceMessenger.Default.Send(new NavigateToMapMessage());
     }
 }
 
@@ -49,9 +52,10 @@ public partial class ChatItemViewModel : ObservableObject
     public bool IsFundTracker { get; init; } = false;
     public bool IsNetease { get; init; } = false;
     public bool IsDouyin { get; init; } = false;
+    public bool IsMap { get; init; } = false;
 
-    // 是否是功能入口（天气 / 基金 / 网易云 / 抖音），控制右侧箭头和 Time 显示
-    public bool IsSpecialEntry => IsWeather || IsFundTracker || IsNetease || IsDouyin;
+    // 是否是功能入口（天气 / 基金 / 网易云 / 抖音 / 地图），控制右侧箭头和 Time 显示
+    public bool IsSpecialEntry => IsWeather || IsFundTracker || IsNetease || IsDouyin || IsMap;
 
     public string AvatarLetter => Name.Length > 0 ? Name[..1] : "?";
     public bool HasUnread => Unread > 0;
@@ -61,5 +65,6 @@ public partial class ChatItemViewModel : ObservableObject
                             : IsFundTracker ? "#59b7c0"
                             : IsNetease ? "#E05C5C"
                             : IsDouyin ? "#161823"
+                            : IsMap ? "#0A84FF"
                             : "#07C160";
 }

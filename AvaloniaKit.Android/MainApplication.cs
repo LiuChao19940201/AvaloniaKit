@@ -41,6 +41,7 @@ public class MainApplication : AvaloniaAndroidApplication<App>
         services.AddSingleton<IDeviceService>(new AndroidDeviceService(GetActivity));
         services.AddSingleton<IImagePickerService>(new AndroidImagePickerService(GetActivity));
         services.AddSingleton<IDouyinService>(new AndroidDouyinService(GetActivity));
+        services.AddSingleton<IMapService>(new AndroidMapService(GetActivity));
         App.Services = services.AddAvaloniaKitCore().BuildServiceProvider();
 
         // ★ 启动日志：Android 程序目录不可写，日志根目录指向私有 FilesDir；

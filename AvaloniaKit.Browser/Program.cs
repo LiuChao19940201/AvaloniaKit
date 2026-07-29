@@ -20,6 +20,7 @@ internal sealed partial class Program
         await JSHost.ImportAsync("storage", "/storage.js");
         await JSHost.ImportAsync("audio", "/audio.js");
         await JSHost.ImportAsync("douyin", "/douyin.js");
+        await JSHost.ImportAsync("map", "/map.js");
 
         // ═══ 组合根：必须在 App 启动前完成服务注册 ═══
         var services = new ServiceCollection();
@@ -27,6 +28,7 @@ internal sealed partial class Program
         services.AddSingleton<IImagePickerService, BrowserImagePickerService>();
         services.AddSingleton<IAudioService, BrowserAudioService>();
         services.AddSingleton<IDouyinService, BrowserDouyinService>();
+        services.AddSingleton<IMapService, BrowserMapService>();
         // 设备反馈（游戏音效/震动三端一致）
         services.AddSingleton<IDeviceService, BrowserDeviceService>();
         App.Services = services.AddAvaloniaKitCore().BuildServiceProvider();

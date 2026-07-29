@@ -32,6 +32,8 @@ public partial class MainWindowViewModel : ObservableObject,
     IRecipient<NavigateBackFromWeatherMessage>,
     IRecipient<NavigateToDouyinMessage>,
     IRecipient<NavigateBackFromDouyinMessage>,
+    IRecipient<NavigateToMapMessage>,
+    IRecipient<NavigateBackFromMapMessage>,
     IRecipient<NavigateToGameBoxesMessage>,
     IRecipient<NavigateBackFromGameBoxesMessage>,
     IRecipient<NavigateToTetrisMessage>,
@@ -54,6 +56,7 @@ public partial class MainWindowViewModel : ObservableObject,
     private readonly NeteasePlayerViewModel _neteasePlayerVm;
     private readonly WeatherViewModel _weatherVm;
     private readonly DouyinViewModel _douyinVm;
+    private readonly MapViewModel _mapVm;
     private readonly GameBoxesViewModel _gameBoxesVm;
     private readonly TetrisViewModel _tetrisVm;
     private readonly SnakeViewModel _snakeVm;
@@ -87,6 +90,7 @@ public partial class MainWindowViewModel : ObservableObject,
         NeteasePlayerViewModel neteasePlayerVm,
         WeatherViewModel weatherVm,
         DouyinViewModel douyinVm,
+        MapViewModel mapVm,
         GameBoxesViewModel gameBoxesVm,
         TetrisViewModel tetrisVm,
         SnakeViewModel snakeVm,
@@ -106,6 +110,7 @@ public partial class MainWindowViewModel : ObservableObject,
         _neteasePlayerVm = neteasePlayerVm;
         _weatherVm = weatherVm;
         _douyinVm = douyinVm;
+        _mapVm = mapVm;
         _gameBoxesVm = gameBoxesVm;
         _tetrisVm = tetrisVm;
         _snakeVm = snakeVm;
@@ -196,6 +201,15 @@ public partial class MainWindowViewModel : ObservableObject,
     }
 
     public void Receive(NavigateBackFromDouyinMessage message) => CurrentPage = _chatVm;
+
+    public void Receive(NavigateToMapMessage message)
+    {
+        // ★ 先切页再显示覆盖层，避免覆盖层盖住旧页面闪烁（与抖音一致）
+        CurrentPage = _mapVm;
+        _mapVm.OnNavigatedTo();
+    }
+
+    public void Receive(NavigateBackFromMapMessage message) => CurrentPage = _chatVm;
 
     public void Receive(NavigateToGameBoxesMessage message) => CurrentPage = _gameBoxesVm;
     public void Receive(NavigateBackFromGameBoxesMessage message) => CurrentPage = _gameBoxesVm;

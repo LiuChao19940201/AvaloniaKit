@@ -64,6 +64,9 @@
 		<DataTemplate DataType="{x:Type chatVm:NeteasePlayerViewModel}">
 			<chat:NeteasePlayerUserControl/>
 		</DataTemplate>
+		<DataTemplate DataType="{x:Type chatVm:MapViewModel}">
+			<chat:MapUserControl/>
+		</DataTemplate>
 
 
 		<DataTemplate DataType="{x:Type contactsVm:ContactsViewModel}">

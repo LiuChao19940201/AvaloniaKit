@@ -34,6 +34,7 @@ public static class AppServiceCollectionExtensions
         services.AddSingleton<NeteasePlayerViewModel>();
         services.AddSingleton<WeatherViewModel>();
         services.AddSingleton<DouyinViewModel>();
+        services.AddSingleton<MapViewModel>();
         services.AddSingleton<GameBoxesViewModel>();
         services.AddSingleton<TetrisViewModel>();
         services.AddSingleton<SnakeViewModel>();
