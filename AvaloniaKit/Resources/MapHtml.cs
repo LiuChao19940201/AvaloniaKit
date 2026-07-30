@@ -63,6 +63,11 @@ public static class MapHtml
   #go { width:100%; height:42px; margin-top:11px; border:none; border-radius:11px;
     background:var(--ac); color:#fff; font-size:15px; font-weight:700; box-shadow:0 4px 12px rgba(22,119,255,.32); }
   #go:active { background:#0f63e6; }
+  /* 面板把手（短横线）：点击/滑动收起展开 */
+  .grab { display:flex; justify-content:center; align-items:center; height:20px; cursor:pointer; touch-action:none; }
+  .grab i { width:40px; height:4px; border-radius:2px; background:#d5dbe3; }
+  .topbar.collapsed { padding-top:2px; padding-bottom:4px; }
+  .topbar.collapsed .tb-body { display:none; }
 
   /* ── 悬浮键 ── */
   .voice-fab { position:absolute; left:12px; bottom:160px; z-index:21; height:40px; padding:0 15px;
@@ -75,9 +80,9 @@ public static class MapHtml
 
   /* ── 多路线卡片 + 开始导航 ── */
   .plan-panel { position:absolute; left:0; right:0; bottom:0; z-index:22; background:#fff;
-    border-radius:18px 18px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,.15); padding:14px 12px 16px; }
-  .plan-panel::before { content:''; position:absolute; top:7px; left:50%; transform:translateX(-50%);
-    width:38px; height:4px; border-radius:2px; background:#e2e6ec; }
+    border-radius:18px 18px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,.15); padding:0 12px 16px; }
+  .plan-panel.collapsed { padding-bottom:6px; }
+  .plan-panel.collapsed .pp-body { display:none; }
   .rcards { display:flex; gap:9px; overflow-x:auto; padding:6px 0 2px; }
   .rcard { position:relative; flex:0 0 auto; min-width:126px; padding:11px 13px; border-radius:13px;
     background:var(--bg); border:1.5px solid transparent; transition:all .15s; }
@@ -88,6 +93,8 @@ public static class MapHtml
   .rcard.on .rl { color:var(--ac); font-weight:600; }
   .rcard .tag { position:absolute; top:-1px; right:-1px; background:var(--ac); color:#fff;
     font-size:10px; font-weight:600; padding:2px 7px; border-radius:0 12px 0 10px; }
+  .rcard .rv { font-size:11px; color:#8a92a0; margin-top:3px; max-width:160px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .start-nav { width:100%; height:46px; margin-top:12px; border:none; border-radius:12px;
     background:var(--ac); color:#fff; font-size:16px; font-weight:700; box-shadow:0 4px 12px rgba(22,119,255,.32);
     display:flex; align-items:center; justify-content:center; gap:7px; }
@@ -118,6 +125,14 @@ public static class MapHtml
     display:flex; flex-direction:column; align-items:center; justify-content:center; }
   .speed-ball b { font-size:22px; color:#1a1f2b; line-height:1; }
   .speed-ball span { font-size:10px; color:#8a92a0; margin-top:3px; }
+  /* 右侧垂直里程光柱（底=起点 顶=终点；路况着色，走过变灰） */
+  .nav-rail { position:absolute; right:10px; top:112px; bottom:110px; width:10px; z-index:24; }
+  .rail-track { position:absolute; inset:0; border-radius:5px; background:#34c759;
+    box-shadow:0 0 0 2px rgba(255,255,255,.95), 0 2px 8px rgba(0,0,0,.25); }
+  .rail-done { position:absolute; left:0; right:0; bottom:0; height:0%; background:#b9c1cc; opacity:.92;
+    border-radius:0 0 5px 5px; }
+  .rail-car { position:absolute; left:50%; bottom:0%; transform:translate(-50%,50%); width:16px; height:16px;
+    border-radius:50%; background:#fff; border:3px solid #1677ff; box-shadow:0 1px 5px rgba(0,0,0,.4); }
 
   /* ── 底部弹层（语音包） ── */
   .mask { position:absolute; inset:0; z-index:30; background:rgba(0,0,0,.4); }
@@ -157,6 +172,7 @@ public static class MapHtml
 <div id="map"></div>
 
 <div class="topbar" id="topbar">
+  <div class="tb-body">
   <div class="route-row">
     <div class="io-wrap">
       <div class="io">
@@ -191,6 +207,8 @@ public static class MapHtml
     <button data-m="ride">骑行</button>
   </div>
   <button id="go">查路线</button>
+  </div>
+  <div class="grab" id="topGrab" title="收起/展开"><i></i></div>
 </div>
 
 <button class="voice-fab" id="voiceFab">🎙 <span id="voiceName">语音包</span></button>
@@ -203,8 +221,11 @@ public static class MapHtml
 </button>
 
 <div class="plan-panel hidden" id="planPanel">
-  <div class="rcards" id="routeCards"></div>
-  <button class="start-nav" id="startNav">🧭 开始导航</button>
+  <div class="grab" id="planGrab" title="收起/展开"><i></i></div>
+  <div class="pp-body">
+    <div class="rcards" id="routeCards"></div>
+    <button class="start-nav" id="startNav">🧭 开始导航</button>
+  </div>
 </div>
 
 <div class="nav-top hidden" id="navTop">
@@ -220,6 +241,11 @@ public static class MapHtml
   <button class="exit-nav" id="exitNav">退出</button>
 </div>
 <div class="speed-ball hidden" id="speedBall"><b id="speedVal">0</b><span>km/h</span></div>
+<div class="nav-rail hidden" id="navRail">
+  <div class="rail-track" id="railTrack"></div>
+  <div class="rail-done" id="railDone"></div>
+  <div class="rail-car" id="railCar"></div>
+</div>
 
 <div class="mask hidden" id="mask"></div>
 <div class="sheet hidden" id="voiceSheet"><h3>选择语音包</h3><div id="packList"></div></div>
@@ -272,16 +298,44 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     if(sex==='male'){ var m=zh.filter(function(v){ return /male|kang|yun|云|康|男|Kangkang|Yunyang/i.test(v.name); }); if(m.length) return m[0]; }
     return zh[0] || null;
   }
+  function stopSpeech(){
+    try{ if(window.NativeTts && NativeTts.stopSpeak) NativeTts.stopSpeak(); }catch(e){}
+    try{ if('speechSynthesis' in window) speechSynthesis.cancel(); }catch(e){}
+  }
   function speakLines(lines){
+    var p = curPack();
+    // ★ Android WebView 无 Web Speech API：优先走原生 TTS 桥（window.NativeTts）
+    if(window.NativeTts && typeof NativeTts.speak==='function'){
+      try{ NativeTts.stopSpeak(); }catch(e){}
+      for(var i=0;i<lines.length;i++){ try{ NativeTts.speak(lines[i], p.rate, p.pitch); }catch(e){} }
+      return;
+    }
     if(!('speechSynthesis' in window)){ return; }
     speechSynthesis.cancel();
-    var p = curPack();
-    for(var i=0;i<lines.length;i++){
-      var u = new SpeechSynthesisUtterance(lines[i]);
+    for(var j=0;j<lines.length;j++){
+      var u = new SpeechSynthesisUtterance(lines[j]);
       u.lang='zh-CN'; u.rate=p.rate; u.pitch=p.pitch;
       var v = pickVoice(p.sex); if(v) u.voice=v;
       speechSynthesis.speak(u);
     }
+  }
+  // 高德式提示音（叮咚双音）：WebAudio，开始导航/到达时播放
+  var audioCtx=null;
+  function chime(){
+    try{
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      if(audioCtx.state==='suspended') audioCtx.resume();
+      var t=audioCtx.currentTime;
+      [[880,0],[660,0.18]].forEach(function(nf){
+        var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.type='sine'; o.frequency.value=nf[0];
+        g.gain.setValueAtTime(0.001, t+nf[1]);
+        g.gain.exponentialRampToValueAtTime(0.22, t+nf[1]+0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t+nf[1]+0.28);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(t+nf[1]); o.stop(t+nf[1]+0.3);
+      });
+    }catch(e){}
   }
 
   // ── 位置箭头图标（大三角，随行进方向 setAngle 旋转）──
@@ -296,7 +350,7 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
   var map=null, mapReady=false, curMode='drive', myCity='北京', myPos=null, geocoder=null;
   var routes=[], overlays=[], selIdx=0;
   var fromLL=null, toLL=null;   // 起终点已定位坐标（有则直接按坐标算路，避免长地址关键词检索失败）
-  var nav={ on:false, mode:'gps', timer:0, full:[], seg:[], suffix:[], ci:0, stepIdx:[], stepInstr:[], stepAction:[],
+  var nav={ on:false, full:[], seg:[], suffix:[], ci:0, stepIdx:[], stepInstr:[], stepAction:[],
             stepRoad:[], stepDist:[], announced:-1, totalDist:0, totalTime:0, carMk:null, destLL:null,
             watchGeo:null, watchId:null, goodFix:false, lastFixPos:null, lastFixTime:0, speedKmh:-1,
             offCnt:0, rerouting:false, arrived:false, lastProc:0, staleTimer:0 };
@@ -426,8 +480,8 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     if(!to){ toast('请输入终点'); return; }
     if(!mapReady){ toast('地图尚未就绪，请稍候'); return; }
     try{ $('from').blur(); $('to').blur(); document.querySelectorAll('.amap-sug-result').forEach(function(e){ e.style.display='none'; }); }catch(e){}
-    if(nav.timer){ clearInterval(nav.timer); nav.timer=0; } stopGpsWatch(); nav.on=false;
-    $('speedBall').classList.add('hidden');
+    stopGpsWatch(); nav.on=false; nav.arrived=false;
+    $('speedBall').classList.add('hidden'); $('navRail').classList.add('hidden');
     $('navTop').classList.add('hidden'); $('navBottom').classList.add('hidden');
     $('topbar').classList.remove('hidden'); $('voiceFab').classList.remove('hidden'); $('loc').classList.remove('hidden');
     clearRoutes(); $('planPanel').classList.add('hidden');
@@ -445,14 +499,26 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
   }
 
   function toNormalized(route){
-    var full=[], steps=[];
+    var full=[], steps=[], tmcs=[], roadDist={};
     (route.steps||[]).forEach(function(st){
       var p=st.path||[];
       steps.push({instr:st.instruction||'', action:st.action||'', road:st.road||'', dist:st.distance||0, idx:full.length});
+      if(st.road) roadDist[st.road]=(roadDist[st.road]||0)+(st.distance||0);
+      // TMC 路况分段（extensions:'all' 时提供），相邻同状态合并降低绘制开销
+      var tp=st.tmcsPaths || st.tmcs_paths || [];
+      for(var t=0;t<tp.length;t++){
+        var seg=tp[t]; if(!seg || !seg.path || seg.path.length<2) continue;
+        var ss=seg.status||'';
+        if(tmcs.length && tmcs[tmcs.length-1].status===ss)
+          tmcs[tmcs.length-1].path=tmcs[tmcs.length-1].path.concat(seg.path);
+        else tmcs.push({ path:seg.path.slice(), status:ss });
+      }
       for(var i=0;i<p.length;i++) full.push(p[i]);
     });
     if(full.length<2 || (route.distance||0) < 50) return null;
-    return { distance:route.distance, time:route.time, tolls:Math.round(route.tolls||0), path:full, steps:steps };
+    // 途经主要道路（按里程取前两条：自然包含高速/干道与小路信息）
+    var via=Object.keys(roadDist).sort(function(a,b){ return roadDist[b]-roadDist[a]; }).slice(0,2).join(' · ');
+    return { distance:route.distance, time:route.time, tolls:Math.round(route.tolls||0), path:full, steps:steps, tmcs:tmcs, via:via };
   }
 
   function planDriveLikeLL(origin,dest,mode){
@@ -471,7 +537,7 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     if(mode==='drive'){
       var pols=drivingPolicies(), pending=pols.length;
       pols.forEach(function(p){
-        var d; try{ d=new AMap.Driving({policy:p}); }catch(e){ try{ d=new AMap.Driving(); }catch(e2){ d=null; } }
+        var d; try{ d=new AMap.Driving({policy:p, extensions:'all'}); }catch(e){ try{ d=new AMap.Driving(); }catch(e2){ d=null; } }
         if(!d){ if(--pending===0) finish(); return; }
         try{
           d.search(origin, dest, function(status,result){
@@ -514,22 +580,56 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     }
   }
 
+  // TMC 路况配色（畅通绿/缓行黄/拥堵红/严重深红；未知走主线蓝）
+  function tmcColor(s){
+    if(/严重/.test(s||'')) return '#a10d0d';
+    if(/拥堵/.test(s||'')) return '#f5432c';
+    if(/缓/.test(s||''))   return '#ffb400';
+    if(/畅/.test(s||''))   return '#34c759';
+    return '';
+  }
+  // 按路况着色绘制路线：蓝色主线打底，TMC 分段覆盖红绿黄（与高德一致）
+  function drawColoredRoute(r, zBase){
+    var base=new AMap.Polyline({ path:r.path, strokeColor:'#1677ff', strokeWeight:9, strokeOpacity:.95,
+      zIndex:zBase, lineJoin:'round', lineCap:'round', showDir:true, isOutline:true, outlineColor:'#fff', borderWeight:2 });
+    base.setMap(map); overlays.push(base);
+    (r.tmcs||[]).forEach(function(t){
+      var c=tmcColor(t.status); if(!c) return;
+      var pl=new AMap.Polyline({ path:t.path, strokeColor:c, strokeWeight:9, strokeOpacity:.95,
+        zIndex:zBase+1, lineJoin:'round', lineCap:'round', showDir:true });
+      pl.setMap(map); overlays.push(pl);
+    });
+  }
+  // 右侧垂直里程光柱：按 TMC 段距离占比着色（底=起点 顶=终点）
+  function buildRail(r){
+    var el=$('railTrack');
+    var segs=r.tmcs||[];
+    if(!segs.length){ el.style.background='#34c759'; return; }
+    var ds=segs.map(function(t){ var d=0; for(var i=0;i<t.path.length-1;i++) d+=dist(t.path[i],t.path[i+1]); return d; });
+    var sum=ds.reduce(function(a,b){ return a+b; }, 0);
+    if(sum<=0){ el.style.background='#34c759'; return; }
+    var g='linear-gradient(to top', acc=0;
+    for(var i2=0;i2<segs.length;i2++){
+      var c=tmcColor(segs[i2].status)||'#34c759';
+      var from=acc/sum*100; acc+=ds[i2]; var to=acc/sum*100;
+      g+=', '+c+' '+from.toFixed(1)+'%, '+c+' '+to.toFixed(1)+'%';
+    }
+    el.style.background=g+')';
+  }
+
   function renderRoutes(){
     clearOverlays();
     routes.forEach(function(r,i){
-      if(!r.path.length) return;
-      var pl=new AMap.Polyline({ path:r.path,
-        strokeColor: i===selIdx ? '#1677ff' : '#aab6c6',
-        strokeWeight: i===selIdx ? 9 : 6,
-        strokeOpacity: i===selIdx ? 0.95 : 0.5,
-        zIndex: i===selIdx ? 60 : 40, lineJoin:'round', lineCap:'round',
-        showDir: i===selIdx, isOutline:i===selIdx, outlineColor:'#ffffff', borderWeight:i===selIdx?2:0 });
+      if(!r.path.length || i===selIdx) return;
+      var pl=new AMap.Polyline({ path:r.path, strokeColor:'#aab6c6', strokeWeight:6, strokeOpacity:0.5,
+        zIndex:40, lineJoin:'round', lineCap:'round' });
       pl.on('click', (function(idx){ return function(){ selectRoute(idx); }; })(i));
       pl.setMap(map); overlays.push(pl);
     });
+    if(routes[selIdx] && routes[selIdx].path.length) drawColoredRoute(routes[selIdx], 60);
     addEndpoints();
     renderCards();
-    $('planPanel').classList.remove('hidden');
+    $('planPanel').classList.remove('hidden'); $('planPanel').classList.remove('collapsed');
     try{ map.setFitView(overlays, false, [96,50,250,50]); }catch(e){ try{ map.setFitView(); }catch(e2){} }
   }
 
@@ -550,8 +650,9 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     routes.forEach(function(r,i){
       var extra = (r.tolls>0) ? (' · 过路费'+r.tolls+'元') : (r.bus ? '' : ' · 无过路费');
       var tag = (i===0 && !r.bus) ? '<span class="tag">推荐</span>' : '';
+      var via=(r.via && !r.bus) ? ('<div class="rv">途经 '+r.via+'</div>') : '';
       var c=document.createElement('div'); c.className='rcard'+(i===selIdx?' on':'');
-      c.innerHTML=tag+'<div class="rt">'+fmtTime(r.time)+'</div><div class="rd">'+fmtDist(r.distance)+extra+'</div><div class="rl">'+(r.label||('路线'+(i+1)))+'</div>';
+      c.innerHTML=tag+'<div class="rt">'+fmtTime(r.time)+'</div><div class="rd">'+fmtDist(r.distance)+extra+'</div>'+via+'<div class="rl">'+(r.label||('路线'+(i+1)))+'</div>';
       c.addEventListener('click', (function(idx){ return function(){ selectRoute(idx); }; })(i));
       box.appendChild(c);
     });
@@ -625,7 +726,9 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     $('navRemain').textContent='剩余 '+fmtDist(rem)+' · '+fmtTime(remTime);
     var eta=new Date(Date.now()+remTime*1000);
     $('navEta').textContent='预计 '+pad(eta.getHours())+':'+pad(eta.getMinutes())+' 到达';
-    $('navProgFill').style.width=(nav.totalDist>0 ? (100*(nav.totalDist-rem)/nav.totalDist) : 0)+'%';
+    var prog=nav.totalDist>0 ? (100*(nav.totalDist-rem)/nav.totalDist) : 0;
+    $('navProgFill').style.width=prog+'%';
+    $('railDone').style.height=prog+'%'; $('railCar').style.bottom=prog+'%';
     var si=0; for(var k=0;k<nav.stepIdx.length;k++){ if(nav.stepIdx[k]<=i) si=k; else break; }
     if(si>nav.announced){ nav.announced=si; announceStepUI(si); speakStep(si); }
     else { updateTurnDist(si); }
@@ -646,9 +749,7 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     nav.destLL=r.path[r.path.length-1];
 
     clearOverlays();
-    var pl=new AMap.Polyline({ path:r.path, strokeColor:'#1677ff', strokeWeight:10, strokeOpacity:0.95,
-      zIndex:60, lineJoin:'round', lineCap:'round', showDir:true, isOutline:true, outlineColor:'#fff', borderWeight:2 });
-    pl.setMap(map); overlays.push(pl);
+    drawColoredRoute(r, 60);
     nav.carMk=new AMap.Marker({ position:r.path[0], zIndex:130, anchor:'center', angle:0,
       icon:new AMap.Icon({ image:ARROW_SVG, size:new AMap.Size(46,46), imageSize:new AMap.Size(46,46) }) });
     nav.carMk.setMap(map); overlays.push(nav.carMk);
@@ -665,21 +766,26 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     if(r.bus){ toast('公交暂不支持导航，请选驾车/步行/骑行'); return; }
     if(!r.path.length){ toast('该路线无可导航路径'); return; }
 
-    nav.on=true; nav.mode='gps'; nav.goodFix=false; nav.lastFixPos=null; nav.lastFixTime=0; nav.lastProc=0;
+    nav.on=true; nav.goodFix=false; nav.lastFixPos=null; nav.lastFixTime=0; nav.lastProc=0;
     setSpeed(-1);
 
     $('topbar').classList.add('hidden'); $('planPanel').classList.add('hidden');
     $('voiceFab').classList.add('hidden'); $('loc').classList.add('hidden');
     $('navTop').classList.remove('hidden'); $('navBottom').classList.remove('hidden');
-    $('speedBall').classList.remove('hidden');
+    $('speedBall').classList.remove('hidden'); $('navRail').classList.remove('hidden');
 
     beginNavUI(r);
+    buildRail(r);
+    $('navEta').textContent='正在等待定位信号…';
     sendHost('app://nav?open=1&t='+Date.now());
-    speakLines(['导航开始，全程'+fmtDist(r.distance)+'，预计'+fmtTime(r.time)+'，请遵守交规，注意行车安全。']);
+    chime();
+    var etaD=new Date(Date.now()+r.time*1000);
+    speakLines(['导航开始，全程'+fmtDist(r.distance)+'，预计行驶'+fmtTime(r.time)+'，'
+      +etaD.getHours()+'点'+pad(etaD.getMinutes())+'分左右到达。请遵守交规，注意行车安全。']);
     startGpsWatch();
   }
 
-  // 启动实时定位跟随；8 秒内拿不到有效精度定位（无定位硬件/仅 IP 级）→ 回退模拟巡航
+  // 启动实时定位跟随；无信号时如实提示并持续等待（导航工具不做演示）
   function startGpsWatch(){
     stopGpsWatch();
     try{
@@ -687,17 +793,22 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
       try{ nav.watchGeo.on('complete', function(result){ onGpsFix('complete', result); }); }catch(e2){}
       nav.watchId=nav.watchGeo.watchPosition(function(status,result){ onGpsFix(status,result); });
     }catch(e){ nav.watchGeo=null; }
-    if(!nav.watchGeo){ fallbackToSim(); return; }
-    setTimeout(function(){ if(nav.on && nav.mode==='gps' && !nav.goodFix) fallbackToSim(); }, 8000);
+    if(!nav.watchGeo){ noSignalHint(); return; }
+    setTimeout(function(){ noSignalHint(); }, 8000);
     // 行进中信号丢失提醒（真实导航必要反馈）
     nav.staleTimer=setInterval(function(){
-      if(!nav.on || nav.mode!=='gps' || nav.arrived) return;
+      if(!nav.on || nav.arrived) return;
       if(nav.goodFix && nav.lastFixTime>0 && Date.now()-nav.lastFixTime>15000) toast('定位信号弱，等待恢复…');
     }, 10000);
   }
+  function noSignalHint(){
+    if(!nav.on || nav.arrived || nav.goodFix) return;
+    toast('未获取到定位信号，请检查系统定位服务与权限');
+    speakLines(['未获取到定位信号，请检查定位设置。']);
+  }
 
   function onGpsFix(status,result){
-    if(!nav.on || nav.arrived || nav.mode!=='gps') return;
+    if(!nav.on || nav.arrived) return;
     if(status!=='complete' || !result || !result.position) return;
     var acc=result.accuracy||9999;
     if(result.location_type==='ip' || acc>300) return;   // IP 级/超差精度不可用于导航
@@ -735,11 +846,11 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     try{
       svc = curMode==='walk' ? new AMap.Walking()
           : curMode==='ride' ? new AMap.Riding()
-          : new AMap.Driving({ policy:drivingPolicies()[0] });
+          : new AMap.Driving({ policy:drivingPolicies()[0], extensions:'all' });
     }catch(e){ nav.rerouting=false; return; }
     svc.search(fromPos, nav.destLL, function(status,result){
       nav.rerouting=false;
-      if(!nav.on || nav.arrived || nav.mode!=='gps') return;
+      if(!nav.on || nav.arrived) return;
       if(status==='complete' && result.routes && result.routes.length){
         var n=toNormalized(result.routes[0]);
         if(n){ beginNavUI(n); speakLines(['已为您重新规划路线，全程'+fmtDist(n.distance)+'。']); return; }
@@ -748,46 +859,27 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     });
   }
 
-  // 无有效定位信号 → 回退模拟巡航（明确提示；车速显示路线真实均速）
-  function fallbackToSim(){
-    if(!nav.on || nav.mode!=='gps') return;
-    stopGpsWatch();
-    nav.mode='sim';
-    toast('未获取到有效定位信号，已切换为模拟巡航');
-    speakLines(['未获取到定位信号，已为您切换到模拟巡航。']);
-    setSpeed(nav.totalTime>0 ? nav.totalDist/nav.totalTime*3.6 : 40);
-    var simSec=Math.min(60, Math.max(15, nav.totalDist/400));
-    var tickMs=160, stepF=nav.full.length/(simSec*1000/tickMs);
-    nav.timer=setInterval(function(){ simTick(stepF); }, tickMs);
-  }
-
-  function simTick(stepN){
-    if(!nav.on || nav.arrived) return;
-    nav.ci=Math.min(nav.full.length-1, nav.ci+stepN);
-    var i=Math.floor(nav.ci);
-    navUpdate(i);
-    if(nav.ci>=nav.full.length-1) arrive();
-  }
-
   function arrive(){
     if(!nav.on || nav.arrived) return;
     nav.arrived=true;
-    if(nav.timer){ clearInterval(nav.timer); nav.timer=0; }
     stopGpsWatch();
     setSpeed(0);
     $('turnIco').textContent='🏁'; $('turnInstr').textContent='已到达目的地'; $('turnDist').innerHTML='';
     $('navRemain').textContent='已到达目的地'; $('navEta').textContent=''; $('navProgFill').style.width='100%';
+    $('railDone').style.height='100%'; $('railCar').style.bottom='100%';
+    chime();
     speakLines(['您已到达目的地附近，本次导航结束。']);
   }
 
   function exitNav(){
-    if(!nav.on && !nav.timer) return;
-    if(nav.timer){ clearInterval(nav.timer); nav.timer=0; }
+    if(!nav.on) return;
     stopGpsWatch();
     nav.on=false; nav.arrived=false;
-    try{ if('speechSynthesis' in window) speechSynthesis.cancel(); }catch(e){}
-    $('navTop').classList.add('hidden'); $('navBottom').classList.add('hidden'); $('speedBall').classList.add('hidden');
-    $('topbar').classList.remove('hidden'); $('voiceFab').classList.remove('hidden'); $('loc').classList.remove('hidden');
+    stopSpeech();
+    $('navTop').classList.add('hidden'); $('navBottom').classList.add('hidden');
+    $('speedBall').classList.add('hidden'); $('navRail').classList.add('hidden');
+    $('topbar').classList.remove('hidden'); $('topbar').classList.remove('collapsed');
+    $('voiceFab').classList.remove('hidden'); $('loc').classList.remove('hidden');
     sendHost('app://nav?open=0&t='+Date.now());
     if(routes.length) renderRoutes();
   }
@@ -829,6 +921,23 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
   $('exitNav').addEventListener('click', exitNav);
   $('voiceFab').addEventListener('click', function(){ renderPacks(); $('mask').classList.remove('hidden'); $('voiceSheet').classList.remove('hidden'); });
   $('mask').addEventListener('click', closeSheets);
+
+  // 面板把手：点击切换收起/展开；滑动按方向（顶部上滑收起，底部下滑收起）
+  function bindGrab(el, panel, collapseDir){
+    var y0=null, touched=false;
+    el.addEventListener('touchstart', function(e){ y0=e.touches[0].clientY; }, {passive:true});
+    el.addEventListener('touchend', function(e){
+      touched=true; setTimeout(function(){ touched=false; }, 400);
+      if(y0===null) return;
+      var dy=e.changedTouches[0].clientY-y0; y0=null;
+      if(Math.abs(dy)<14){ panel.classList.toggle('collapsed'); return; }
+      var collapse = collapseDir==='up' ? dy<0 : dy>0;
+      panel.classList.toggle('collapsed', collapse);
+    }, {passive:true});
+    el.addEventListener('click', function(){ if(touched) return; panel.classList.toggle('collapsed'); });
+  }
+  bindGrab($('topGrab'), $('topbar'), 'up');
+  bindGrab($('planGrab'), $('planPanel'), 'down');
 
   if(document.readyState==='complete') initMap();
   else window.addEventListener('load', initMap);

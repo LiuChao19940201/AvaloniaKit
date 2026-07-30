@@ -1,8 +1,10 @@
 using Android.App;
+using Android.Speech.Tts;
 using Android.Views;
 using Android.Webkit;
 using Android.Widget;
 using AvaloniaKit.Services;
+using Java.Interop;
 using System;
 
 namespace AvaloniaKit.Android.Services;
@@ -14,6 +16,8 @@ namespace AvaloniaKit.Android.Services;
 //    DIP→px 用屏幕 density 换算，与 Avalonia RenderScaling 同源
 //  · LoadDataWithBaseURL 加载共享 HTML（高德 JS API 地图 + 路线规划 + TTS 播报）
 //  · 开启 Geolocation；Show 时运行时请求定位权限（Android 6+），H5 定位才能拿到真实 GPS
+//  · ★ 原生 TTS 桥（window.NativeTts）：Android WebView 不支持 Web Speech API，
+//    导航语音经 TextToSpeech 播报（页面侧自动优先走桥，其余端仍用 speechSynthesis）
 //  · 系统返回键/手势由 MainActivity 的 SubPageBackCallback 兜底（MapViewModel.GoBack 调 Hide）
 // ══════════════════════════════════════════════════════════════════════════════
 public class AndroidMapService : IMapService
@@ -22,6 +26,7 @@ public class AndroidMapService : IMapService
     private readonly Func<Activity> _getActivity;
     private Activity CurrentActivity => _getActivity();
     private WebView? _webView;
+    private NativeTtsBridge? _tts;
 
     public event EventHandler? ExitRequested;
     public event EventHandler<string>? MessageReceived;
@@ -58,6 +63,11 @@ public class AndroidMapService : IMapService
             wv.SetWebViewClient(new AppInterceptClient(this));
             wv.SetWebChromeClient(new GeoChromeClient());        // ★ 授予定位权限提示
 
+            // ★ 原生 TTS 桥：导航语音经 TextToSpeech 播报
+            _tts?.Shutdown();
+            _tts = new NativeTtsBridge(activity);
+            wv.AddJavascriptInterface(_tts, "NativeTts");
+
             wv.LoadDataWithBaseURL("https://map.local/", html, "text/html", "utf-8", null);
 
             // ★ 顶部下移：露出 Avalonia 标题栏（DIP × density = 物理像素）
@@ -86,6 +96,50 @@ public class AndroidMapService : IMapService
         }
         catch { /* Activity 销毁竞态时忽略 */ }
         _webView = null;
+        _tts?.Shutdown();
+        _tts = null;
+    }
+
+    // ── 原生 TTS 桥：Android WebView 无 Web Speech API，页面经 window.NativeTts 播报 ──────
+    private sealed class NativeTtsBridge : Java.Lang.Object, TextToSpeech.IOnInitListener
+    {
+        private TextToSpeech? _tts;
+        private bool _ready;
+
+        public NativeTtsBridge(Activity activity) => _tts = new TextToSpeech(activity, this);
+
+        public void OnInit(OperationResult status)
+        {
+            if (status == OperationResult.Success && _tts != null)
+            {
+                try { _tts.SetLanguage(Java.Util.Locale.SimplifiedChinese); _ready = true; }
+                catch { /* 缺少中文语音包时静默，页面回退 speechSynthesis */ }
+            }
+        }
+
+        [JavascriptInterface]
+        [Export("speak")]
+        public void Speak(string text, float rate, float pitch)
+        {
+            if (!_ready || _tts == null) return;
+            try
+            {
+                _tts.SetSpeechRate(rate);
+                _tts.SetPitch(pitch);
+                _tts.Speak(text, QueueMode.Add, null, "nav" + Environment.TickCount);
+            }
+            catch { }
+        }
+
+        [JavascriptInterface]
+        [Export("stopSpeak")]
+        public void StopSpeak() { try { _tts?.Stop(); } catch { } }
+
+        public void Shutdown()
+        {
+            try { _tts?.Stop(); _tts?.Shutdown(); } catch { }
+            _tts = null; _ready = false;
+        }
     }
 
     // ── 拦截 app://：exit → ExitRequested；其余（voice 等）→ MessageReceived ──────
