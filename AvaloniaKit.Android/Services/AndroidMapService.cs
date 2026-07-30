@@ -53,6 +53,10 @@ public class AndroidMapService : IMapService
             }
 
             var wv = new WebView(activity);
+            // ★ Debug 构建开启 WebView 远程调试（chrome://inspect 排查页面），Release 关闭
+#if DEBUG
+            try { WebView.SetWebContentsDebuggingEnabled(true); } catch { }
+#endif
             var s = wv.Settings;
             s.JavaScriptEnabled = true;
             s.DomStorageEnabled = true;
@@ -79,6 +83,8 @@ public class AndroidMapService : IMapService
                 TopMargin = (int)Math.Round(topOffsetDip * density),
             };
             activity.AddContentView(wv, lp);
+            // ★ 地图/导航期间屏幕常亮（导航工具刚需：避免燄屏中断行程）
+            try { activity.Window?.AddFlags(WindowManagerFlags.KeepScreenOn); } catch { }
             _webView = wv;
         });
     }
@@ -96,6 +102,8 @@ public class AndroidMapService : IMapService
         }
         catch { /* Activity 销毁竞态时忽略 */ }
         _webView = null;
+        // ★ 退出地图：取消屏幕常亮，恢复系统默认息屏策略
+        try { CurrentActivity.Window?.ClearFlags(WindowManagerFlags.KeepScreenOn); } catch { }
         _tts?.Shutdown();
         _tts = null;
     }
