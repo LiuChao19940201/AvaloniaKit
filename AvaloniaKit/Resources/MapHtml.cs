@@ -6,9 +6,12 @@ namespace AvaloniaKit.Resources;
 //  · 查路线：多策略并行算路去重 → 多条备选路线，点线/卡片切换选中
 //  · 起点/终点输入框内置「定位」按钮：一键填入当前位置；右下角「回到我的位置」悬浮键
 //  · 导航：真实 GPS 跟随（watchPosition 吸附路线/偏航自动重算/到达判定/实测车速球）；
-//    无有效定位信号（如桌面无定位硬件）自动回退模拟巡航并明确语音+文字提示
-//  · 位置点为大三角方向箭头（随行进方向旋转）+ 转向卡 + 剩余里程/ETA + 进度条 +
+//    无定位信号时如实提示并持续等待（无演示模式）
+//  · 位置点为大三角方向箭头 + 转向卡 + 剩余里程/ETA + 进度条 +
 //    按所选语音包 TTS 逐路口精简播报；「退出」回路线选择
+//  · ★ 行进方向朝前（heading-up）：原生端（Android/iOS/Desktop，直接加载）导航中
+//    地图随行进方向旋转、箭头恒指屏幕上方、视野中心前移；Browser（iframe 内嵌，
+//    旋转不渲染）自动降级为正北朝上 + 箭头指行进方向
 //  · 定位：H5 精确定位优先，失败回退 IP 城市级定位（提示区分精度）
 //  · 语音包：SpeechSynthesis(TTS) 用音色/语速/音调模拟 5 个语音包
 //  · JS→宿主消息：app://voice?id=（切语音包持久化）、app://nav?open=1/0（导航态）
@@ -283,8 +286,10 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
   function hideSpin(){ $('spin').classList.remove('show'); }
   function pad(n){ return n<10 ? '0'+n : ''+n; }
 
+  // 是否内嵌 iframe（Browser 端）：该环境地图旋转不渲染，导航降级为正北+箭头模式
+  var IS_EMBED = (function(){ try{ return window.parent!==window; }catch(e){ return true; } })();
   function sendHost(url){
-    if (window.parent !== window){ try{ window.parent.postMessage('map-msg:'+url,'*'); }catch(e){} }
+    if (IS_EMBED){ try{ window.parent.postMessage('map-msg:'+url,'*'); }catch(e){} }
     else { location.href = url; }
   }
 
@@ -353,7 +358,7 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
   var nav={ on:false, full:[], seg:[], suffix:[], ci:0, stepIdx:[], stepInstr:[], stepAction:[],
             stepRoad:[], stepDist:[], announced:-1, totalDist:0, totalTime:0, carMk:null, destLL:null,
             watchGeo:null, watchId:null, goodFix:false, lastFixPos:null, lastFixTime:0, speedKmh:-1,
-            offCnt:0, rerouting:false, arrived:false, lastProc:0, staleTimer:0 };
+            offCnt:0, rerouting:false, arrived:false, lastProc:0, staleTimer:0, lastBrg:-999 };
 
   function showFail(){ $('fail').classList.remove('hidden'); }
 
@@ -461,6 +466,16 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     var x=Math.cos(la1)*Math.sin(la2)-Math.sin(la1)*Math.cos(la2)*Math.cos(dLng);
     return (Math.atan2(y,x)*toDeg+360)%360;
   }
+  // 环形角度差（0~180）
+  function angDiff(a,b){ var d=Math.abs(a-b)%360; return d>180 ? 360-d : d; }
+  // 沿方位角前移 meters 米的坐标（heading-up 时作视野中心，让车居屏幕中下、多看前方）
+  function pointAhead(p, brg, meters){
+    var R=6378137, rad=Math.PI/180;
+    var la=p.getLat()*rad, ln=p.getLng()*rad, b=brg*rad, dr=meters/R;
+    var la2=Math.asin(Math.sin(la)*Math.cos(dr)+Math.cos(la)*Math.sin(dr)*Math.cos(b));
+    var ln2=ln+Math.atan2(Math.sin(b)*Math.sin(dr)*Math.cos(la), Math.cos(dr)-Math.sin(la)*Math.sin(la2));
+    return new AMap.LngLat(ln2/rad, la2/rad);
+  }
   function fmtDist(m){ return m>=1000 ? (m/1000).toFixed(1)+'公里' : Math.round(m)+'米'; }
   function fmtTime(s){ var m=Math.max(1,Math.round(s/60)); return m>=60 ? Math.floor(m/60)+'小时'+(m%60)+'分' : m+'分钟'; }
 
@@ -481,6 +496,7 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     if(!mapReady){ toast('地图尚未就绪，请稍候'); return; }
     try{ $('from').blur(); $('to').blur(); document.querySelectorAll('.amap-sug-result').forEach(function(e){ e.style.display='none'; }); }catch(e){}
     stopGpsWatch(); nav.on=false; nav.arrived=false;
+    try{ map.setRotation(0); }catch(e){}
     $('speedBall').classList.add('hidden'); $('navRail').classList.add('hidden');
     $('navTop').classList.add('hidden'); $('navBottom').classList.add('hidden');
     $('topbar').classList.remove('hidden'); $('voiceFab').classList.remove('hidden'); $('loc').classList.remove('hidden');
@@ -718,9 +734,16 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
   // 导航 UI 统一刷新（GPS/模拟两种驱动共用）：位置/朝向/剩余/ETA/进度/转向卡/播报
   function navUpdate(i, posOverride){
     var pos = posOverride || nav.full[i];
+    var brg = i>0 ? bearing(nav.full[i-1], nav.full[i]) : -1;
     if(nav.carMk){ nav.carMk.setPosition(pos);
-      if(i>0){ try{ nav.carMk.setAngle(bearing(nav.full[i-1], nav.full[i])); }catch(e){} } }
-    try{ map.setCenter(pos); }catch(e){}
+      // ★ 原生端 heading-up：箭头恒指屏幕上方；内嵌端正北模式：箭头指行进方向
+      if(brg>=0){ try{ nav.carMk.setAngle(IS_EMBED ? brg : 0); }catch(e){} } }
+    // ★ 行进方向朝前：地图随方位旋转（>6° 才转，避免 GPS 抖动带来的晃动）
+    if(!IS_EMBED && brg>=0 && angDiff(brg, nav.lastBrg)>6){
+      nav.lastBrg=brg;
+      try{ map.setRotation((360-brg)%360); }catch(e){}
+    }
+    try{ map.setCenter((!IS_EMBED && brg>=0) ? pointAhead(pos, brg, 120) : pos); }catch(e){}
     var rem=nav.suffix[i]||0;
     var remTime=nav.totalDist>0 ? nav.totalTime*(rem/nav.totalDist) : 0;
     $('navRemain').textContent='剩余 '+fmtDist(rem)+' · '+fmtTime(remTime);
@@ -745,7 +768,7 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     nav.stepAction=r.steps.map(function(s){return s.action;});
     nav.stepRoad=r.steps.map(function(s){return s.road;});
     nav.stepDist=r.steps.map(function(s){return s.dist;});
-    nav.ci=0; nav.announced=0; nav.offCnt=0; nav.rerouting=false; nav.arrived=false;
+    nav.ci=0; nav.announced=0; nav.offCnt=0; nav.rerouting=false; nav.arrived=false; nav.lastBrg=-999;
     nav.destLL=r.path[r.path.length-1];
 
     clearOverlays();
@@ -876,6 +899,7 @@ window._AMapSecurityConfig = { securityJsCode: '__AMAP_SECURITY__' };
     stopGpsWatch();
     nav.on=false; nav.arrived=false;
     stopSpeech();
+    try{ map.setRotation(0); }catch(e){}   // 退出导航恢复正北朝上
     $('navTop').classList.add('hidden'); $('navBottom').classList.add('hidden');
     $('speedBall').classList.add('hidden'); $('navRail').classList.add('hidden');
     $('topbar').classList.remove('hidden'); $('topbar').classList.remove('collapsed');
